@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-primary: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+  
+  body {
+    font-family: var(--font-primary);
+  }
+}
+
+/* Celestial Spatial Color Gradients */
+.bg-gradient-sphere {
+  background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 50%, #3B82F6 100%);
+}
+
+.bg-gradient-cosmic {
+  background: linear-gradient(135deg, #F43F5E 0%, #D946EF 35%, #8B5CF6 70%, #06B6D4 100%);
+}
+
+.text-gradient-sphere {
+  background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 50%, #3B82F6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-cosmic {
+  background: linear-gradient(135deg, #F43F5E 0%, #D946EF 35%, #8B5CF6 70%, #06B6D4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Aerogel Glass Surfaces */
+.aerogel-card {
+  background: rgba(18, 18, 24, 0.72);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.aerogel-card-glow {
+  background: rgba(18, 18, 24, 0.75);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: 1px solid rgba(236, 72, 153, 0.25);
+  box-shadow: 0 0 35px rgba(236, 72, 153, 0.15), 0 25px 60px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.spatial-dock {
+  background: rgba(10, 10, 15, 0.82);
+  backdrop-filter: blur(36px);
+  -webkit-backdrop-filter: blur(36px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(139, 92, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+/* Ambient dynamic audio backglow */
+.ambient-audio-glow {
+  position: absolute;
+  inset: -15px;
+  background: radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.25), rgba(139, 92, 246, 0.18), transparent 70%);
+  filter: blur(28px);
+  z-index: -1;
+  pointer-events: none;
+  animation: pulse-audio 3s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-audio {
+  0% { transform: scale(0.96); opacity: 0.5; }
+  100% { transform: scale(1.05); opacity: 0.9; }
+}
+
+/* Spinning Vinyl Animation */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+
+/* Story Celestial Aura Ring */
+@keyframes celestial-orbit {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-celestial-orbit {
+  animation: celestial-orbit 5s linear infinite;
+}
+
+/* Sound Wave Radiating Ring */
+@keyframes sound-wave-expand {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+
+.animate-sound-wave-ring {
+  animation: sound-wave-expand 1.8s ease-out infinite;
+}
+
+/* Hide scrollbar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Sleek scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Photo Filter Effects */
+.filter-normal { filter: none; }
+.filter-clarendon { filter: contrast(1.2) saturate(1.25) brightness(1.05); }
+.filter-gingham { filter: brightness(1.05) hue-rotate(-10deg) sepia(0.04); }
+.filter-juno { filter: contrast(1.15) saturate(1.4) brightness(1.08); }
+.filter-lark { filter: contrast(0.9) brightness(1.1) saturate(1.1); }
+.filter-moon { filter: grayscale(1) contrast(1.1) brightness(1.1); }
+.filter-valencia { filter: contrast(1.08) brightness(1.08) sepia(0.08); }
+.filter-vintage { filter: sepia(0.35) contrast(0.95) saturate(1.2); }
+.filter-noir { filter: grayscale(1) contrast(1.4) brightness(0.9); }
+.filter-warm { filter: sepia(0.2) saturate(1.3) hue-rotate(-5deg); }
+.filter-cyber { filter: contrast(1.2) hue-rotate(180deg) saturate(1.5); }
