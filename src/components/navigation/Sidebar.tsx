@@ -11,7 +11,8 @@ import {
   Moon,
   Sparkles,
   LogOut,
-  Radio
+  Radio,
+  Download
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -27,6 +28,7 @@ export const Sidebar: React.FC = () => {
     isNotificationsOpen,
     setIsNotificationsOpen,
     setIsCreatePostOpen,
+    setIsInstallModalOpen,
     theme,
     toggleTheme,
     logout
@@ -186,7 +188,7 @@ export const Sidebar: React.FC = () => {
             </button>
 
             {/* Central Prism Create Button */}
-            <div className="pt-2">
+            <div className="pt-2 space-y-1.5">
               <button
                 onClick={() => setIsCreatePostOpen(true)}
                 className="w-full flex items-center justify-center xl:justify-start gap-3.5 p-3 rounded-2xl bg-gradient-cosmic text-white font-bold shadow-[0_0_25px_rgba(236,72,153,0.35)] hover:opacity-95 active:scale-95 transition-all group"
@@ -196,6 +198,20 @@ export const Sidebar: React.FC = () => {
                 </div>
                 <span className={`${isDrawerOpen ? 'hidden' : 'hidden xl:inline text-xs font-extrabold tracking-wide'}`}>
                   Create Orbit
+                </span>
+              </button>
+
+              {/* Download / Install App */}
+              <button
+                onClick={() => setIsInstallModalOpen(true)}
+                className="w-full flex items-center justify-center xl:justify-start gap-3.5 px-3 py-2.5 rounded-2xl transition-all group text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 border border-cyan-500/20"
+                title="Download & Install App"
+              >
+                <div className="p-1.5 rounded-xl bg-cyan-500/15 group-hover:scale-110 transition-transform">
+                  <Download className="w-4 h-4 stroke-[2.2]" />
+                </div>
+                <span className={`${isDrawerOpen ? 'hidden' : 'hidden xl:inline text-xs font-bold'}`}>
+                  Download App
                 </span>
               </button>
             </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Send, Sparkles, Sun, Moon, Search } from 'lucide-react';
+import { Heart, Send, Sparkles, Sun, Moon, Search, Download } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const MobileHeader: React.FC = () => {
@@ -11,6 +11,7 @@ export const MobileHeader: React.FC = () => {
     setIsNotificationsOpen,
     isSearchOpen,
     setIsSearchOpen,
+    setIsInstallModalOpen,
     theme,
     toggleTheme
   } = useApp();
@@ -37,6 +38,16 @@ export const MobileHeader: React.FC = () => {
 
       {/* Action buttons */}
       <div className="flex items-center gap-1 sm:gap-1.5">
+        {/* Download App / Install PWA */}
+        <button
+          onClick={() => setIsInstallModalOpen(true)}
+          className="p-1.5 text-cyan-400 hover:text-cyan-300 rounded-xl hover:bg-white/5 transition-colors active:scale-95"
+          aria-label="Download App"
+          title="Download & Install App"
+        >
+          <Download className="w-4 h-4 stroke-[2]" />
+        </button>
+
         {/* Search */}
         <button
           onClick={() => setIsSearchOpen(!isSearchOpen)}

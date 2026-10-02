@@ -15,9 +15,19 @@ import { CreatePostModal } from './components/create/CreatePostModal';
 import { StoryViewerModal } from './components/feed/StoryViewerModal';
 import { PostDetailModal } from './components/feed/PostDetailModal';
 import { CallModal } from './components/calling/CallModal';
+import { InstallAppModal } from './components/navigation/InstallAppModal';
 
 const AppContent: React.FC = () => {
-  const { activeTab, isAuthenticated, currentUser, callSession, endCall, acceptIncomingCall } = useApp();
+  const { 
+    activeTab, 
+    isAuthenticated, 
+    currentUser, 
+    callSession, 
+    endCall, 
+    acceptIncomingCall,
+    isInstallModalOpen,
+    setIsInstallModalOpen
+  } = useApp();
 
   // If user is not authenticated, display the full Instagram Auth experience
   if (!isAuthenticated || !currentUser) {
@@ -51,6 +61,7 @@ const AppContent: React.FC = () => {
       <StoryViewerModal />
       <PostDetailModal />
       <CallModal session={callSession} onEndCall={endCall} onAcceptCall={acceptIncomingCall} />
+      <InstallAppModal isOpen={isInstallModalOpen} onClose={() => setIsInstallModalOpen(false)} />
     </div>
   );
 };

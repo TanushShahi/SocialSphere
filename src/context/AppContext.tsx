@@ -41,6 +41,8 @@ interface AppContextType {
   setIsSearchOpen: (open: boolean) => void;
   isNotificationsOpen: boolean;
   setIsNotificationsOpen: (open: boolean) => void;
+  isInstallModalOpen: boolean;
+  setIsInstallModalOpen: (open: boolean) => void;
   toggleLikePost: (postId: string) => Promise<void>;
   toggleSavePost: (postId: string) => Promise<void>;
   addComment: (postId: string, text: string) => Promise<void>;
@@ -134,6 +136,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
 
   // Calling & Real-Time Presence
   const [callSession, setCallSession] = useState<CallSession | null>(null);
@@ -679,6 +682,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsSearchOpen,
         isNotificationsOpen,
         setIsNotificationsOpen,
+        isInstallModalOpen,
+        setIsInstallModalOpen,
         toggleLikePost,
         toggleSavePost,
         addComment,
