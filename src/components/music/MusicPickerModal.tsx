@@ -1,64 +1,9 @@
-import React, { useState, useRef } from 'react';
-import { X, Search, Play, Pause, Music, Check, Volume2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, Search, Play, Pause, Music, Check, Volume2, Globe, Loader2, Sparkles } from 'lucide-react';
 import { SongTrack } from '../../types';
+import { CURATED_SONGS } from './curatedTracks';
 
-export const CURATED_SONGS: SongTrack[] = [
-  {
-    id: 'song_1',
-    title: 'Tokyo Rain Lofi',
-    artist: 'Sphere Chill Beats',
-    coverUrl: 'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=300&auto=format&fit=crop&q=80',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-    duration: 30,
-    genre: 'Lo-Fi'
-  },
-  {
-    id: 'song_2',
-    title: 'Golden Hour Acoustic',
-    artist: 'Summer Echoes',
-    coverUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&auto=format&fit=crop&q=80',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-    duration: 30,
-    genre: 'Acoustic'
-  },
-  {
-    id: 'song_3',
-    title: 'Midnight Synthwave',
-    artist: 'Neon Boulevard',
-    coverUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-    duration: 30,
-    genre: 'Synthwave'
-  },
-  {
-    id: 'song_4',
-    title: 'Morning Matcha Vibes',
-    artist: 'Kyoto Sun',
-    coverUrl: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=300&auto=format&fit=crop&q=80',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
-    duration: 30,
-    genre: 'Chill'
-  },
-  {
-    id: 'song_5',
-    title: 'Starlight Dreamer',
-    artist: 'Aura Minimalist',
-    coverUrl: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=300&auto=format&fit=crop&q=80',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3',
-    duration: 30,
-    genre: 'Ambient'
-  },
-  {
-    id: 'song_6',
-    title: 'Urban Sunset Groove',
-    artist: 'Solaris Rhythm',
-    coverUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-    duration: 30,
-    genre: 'Pop'
-  }
-];
-
+export { CURATED_SONGS };
 export const POPULAR_TRACKS = CURATED_SONGS;
 
 interface MusicPickerModalProps {
@@ -69,31 +14,92 @@ interface MusicPickerModalProps {
   selectedSongId?: string;
 }
 
+const GENRES = [
+  { id: 'All', label: 'All', icon: '✨' },
+  { id: 'Hindi', label: 'Hindi / Bollywood', icon: '🇮🇳' },
+  { id: 'Punjabi', label: 'Punjabi / Desi', icon: '🌾' },
+  { id: 'English', label: 'Global English', icon: '🌍' },
+  { id: 'Spanish', label: 'Spanish / Latin', icon: '💃' },
+  { id: 'K-Pop', label: 'K-Pop & Asian', icon: '🌸' },
+  { id: 'Lo-Fi', label: 'Lo-Fi & Chill', icon: '🎧' },
+];
+
 export const MusicPickerModal: React.FC<MusicPickerModalProps> = ({
   isOpen,
   onClose,
   onSelectSong,
   currentSelectedId,
-  selectedSongId
+  selectedSongId,
 }) => {
   const effectiveSelectedId = currentSelectedId || selectedSongId;
   const [searchQuery, setSearchQuery] = useState('');
   const [activeGenre, setActiveGenre] = useState<string>('All');
   const [playingSongId, setPlayingSongId] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<SongTrack[]>([]);
+  const [isSearchingOnline, setIsSearchingOnline] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Debounced online iTunes API search for ANY artist/song in ANY language
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setIsSearchingOnline(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingOnline(true);
+      try {
+        const query = searchQuery.trim();
+        const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=25`);
+        const data = await res.json();
+        if (data.results && data.results.length > 0) {
+          const mapped: SongTrack[] = data.results.map((item: any) => ({
+            id: `itunes_${item.trackId}`,
+            title: item.trackName || 'Unknown Title',
+            artist: item.artistName || 'Unknown Artist',
+            coverUrl: (item.artworkUrl100 || '').replace('100x100bb', '300x300bb') ||
+              'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80',
+            audioUrl: item.previewUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+            duration: Math.round((item.trackTimeMillis || 30000) / 1000),
+            genre: item.primaryGenreName || 'Music'
+          }));
+          setSearchResults(mapped);
+        } else {
+          setSearchResults([]);
+        }
+      } catch (err) {
+        console.warn('Online music search fallback:', err);
+      } finally {
+        setIsSearchingOnline(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   if (!isOpen) return null;
 
-  const genres = ['All', 'Lo-Fi', 'Acoustic', 'Synthwave', 'Chill', 'Ambient', 'Pop'];
-
-  const filteredSongs = CURATED_SONGS.filter(song => {
+  // Filter curated songs based on active genre and search query
+  const localFiltered = CURATED_SONGS.filter((song) => {
     const matchesQuery =
+      searchQuery.trim() === '' ||
       song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       song.artist.toLowerCase().includes(searchQuery.toLowerCase()) ||
       song.genre.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesGenre = activeGenre === 'All' || song.genre === activeGenre;
     return matchesQuery && matchesGenre;
   });
+
+  // Combine results: if user searched online, show local matches first then online live results
+  let displayedSongs: SongTrack[] = [];
+  if (searchQuery.trim()) {
+    const existingIds = new Set(localFiltered.map(s => s.title.toLowerCase() + s.artist.toLowerCase()));
+    const uniqueOnline = searchResults.filter(s => !existingIds.has(s.title.toLowerCase() + s.artist.toLowerCase()));
+    displayedSongs = [...localFiltered, ...uniqueOnline];
+  } else {
+    displayedSongs = localFiltered;
+  }
 
   const togglePreview = (e: React.MouseEvent, song: SongTrack) => {
     e.stopPropagation();
@@ -107,9 +113,8 @@ export const MusicPickerModal: React.FC<MusicPickerModalProps> = ({
         audioRef.current.pause();
       }
       const audio = new Audio(song.audioUrl);
-      audio.volume = 0.5;
+      audio.volume = 0.6;
       audio.play().catch(() => {
-        // Fallback: Web Audio synth beep melody if external audio cannot play
         playSyntheticChime();
       });
       audio.onended = () => setPlayingSongId(null);
@@ -155,138 +160,187 @@ export const MusicPickerModal: React.FC<MusicPickerModalProps> = ({
   return (
     <div
       onClick={handleModalClose}
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 animate-fade-in select-none"
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-3 animate-fade-in select-none"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[85vh] text-white"
+        className="bg-[#0b0b14] border border-white/15 rounded-3xl w-full max-w-lg overflow-hidden shadow-[0_25px_80px_rgba(0,0,0,0.9)] flex flex-col max-h-[85vh] text-white"
       >
         {/* Header */}
-        <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-pink-500/20 text-pink-400 flex items-center justify-center">
-              <Music className="w-4 h-4" />
+        <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-cosmic p-[1.5px] flex items-center justify-center shadow-[0_0_15px_rgba(236,72,153,0.3)]">
+              <div className="w-full h-full bg-black/80 rounded-2xl flex items-center justify-center">
+                <Music className="w-5 h-5 text-pink-400" />
+              </div>
             </div>
             <div>
-              <h3 className="font-bold text-sm">Add Music</h3>
-              <p className="text-[11px] text-zinc-400">Attach a song to your Story or Post</p>
+              <h3 className="font-extrabold text-base tracking-tight flex items-center gap-1.5">
+                Music Universe
+                <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+              </h3>
+              <p className="text-[11px] text-zinc-400">Hindi, Punjabi, Global Pop, Latin & Worldwide Hits</p>
             </div>
           </div>
           <button
             onClick={handleModalClose}
-            className="p-1.5 text-zinc-400 hover:text-white rounded-full bg-zinc-900"
+            className="p-2 text-zinc-400 hover:text-white rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Search */}
-        <div className="p-3 border-b border-zinc-800/70">
+        {/* Search Input */}
+        <div className="p-3.5 border-b border-white/10 bg-white/[0.01] space-y-3">
           <div className="relative">
-            <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search music, artists, genres..."
-              className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-700"
+              placeholder="Search Hindi, Arijit, Punjabi, AP Dhillon, Taylor Swift, Anime..."
+              className="w-full bg-white/[0.04] border border-white/10 rounded-2xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-pink-500/50 focus:ring-2 focus:ring-pink-500/20 transition-all"
             />
+            {isSearchingOnline && (
+              <Loader2 className="w-3.5 h-3.5 text-cyan-400 animate-spin absolute right-3.5 top-1/2 -translate-y-1/2" />
+            )}
           </div>
 
-          {/* Genre Chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-3">
-            {genres.map((g) => (
-              <button
-                key={g}
-                onClick={() => setActiveGenre(g)}
-                className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-colors ${
-                  activeGenre === g
-                    ? 'bg-white text-black'
-                    : 'bg-zinc-900 text-zinc-400 hover:text-white'
-                }`}
-              >
-                {g}
-              </button>
-            ))}
+          {/* Genre / Language Filter Chips */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+            {GENRES.map((g) => {
+              const active = activeGenre === g.id && !searchQuery.trim();
+              return (
+                <button
+                  key={g.id}
+                  onClick={() => {
+                    setActiveGenre(g.id);
+                    setSearchQuery('');
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 whitespace-nowrap transition-all ${
+                    active
+                      ? 'bg-gradient-cosmic text-white shadow-[0_0_12px_rgba(236,72,153,0.4)] scale-[1.02]'
+                      : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10 border border-white/5'
+                  }`}
+                >
+                  <span>{g.icon}</span>
+                  <span>{g.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Song List */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
-          {filteredSongs.length > 0 ? (
-            filteredSongs.map((song) => {
-              const isSelected = song.id === effectiveSelectedId;
-              const isPlaying = song.id === playingSongId;
+        {/* Songs List */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-1.5 custom-scrollbar">
+          {displayedSongs.length === 0 ? (
+            <div className="py-12 flex flex-col items-center justify-center text-center space-y-2 text-zinc-500">
+              <Globe className="w-8 h-8 opacity-40 animate-pulse text-pink-400" />
+              <p className="text-xs font-semibold text-zinc-400">No tracks found</p>
+              <p className="text-[10px] text-zinc-500 max-w-xs">
+                Try searching for any artist, movie or song name (e.g. Arijit Singh, Diljit, The Weeknd, BTS)
+              </p>
+            </div>
+          ) : (
+            displayedSongs.map((song) => {
+              const isSelected = effectiveSelectedId === song.id;
+              const isPlaying = playingSongId === song.id;
 
               return (
                 <div
                   key={song.id}
                   onClick={() => handleSelect(song)}
-                  className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer transition-colors ${
-                    isSelected ? 'bg-zinc-900 border border-zinc-700' : 'hover:bg-zinc-900/60'
+                  className={`w-full p-2.5 rounded-2xl flex items-center justify-between transition-all cursor-pointer group border ${
+                    isSelected
+                      ? 'bg-pink-500/10 border-pink-500/40 shadow-[0_0_20px_rgba(236,72,153,0.15)]'
+                      : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.06] hover:border-white/15'
                   }`}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    {/* Album Art with Play/Pause button */}
-                    <div className="relative w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 group">
+                  <div className="flex items-center gap-3 min-w-0 pr-2">
+                    {/* Album Art with Floating Play Toggle */}
+                    <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-zinc-900 border border-white/10 group-hover:shadow-[0_0_12px_rgba(236,72,153,0.3)] transition-all">
                       <img
                         src={song.coverUrl}
                         alt={song.title}
                         className="w-full h-full object-cover"
+                        loading="lazy"
                       />
                       <button
+                        type="button"
                         onClick={(e) => togglePreview(e, song)}
-                        className="absolute inset-0 bg-black/40 flex items-center justify-center text-white hover:bg-black/60 transition-colors"
-                        title={isPlaying ? 'Pause preview' : 'Play preview'}
+                        className={`absolute inset-0 flex items-center justify-center transition-all ${
+                          isPlaying
+                            ? 'bg-black/60 opacity-100'
+                            : 'bg-black/40 opacity-0 group-hover:opacity-100'
+                        }`}
                       >
                         {isPlaying ? (
-                          <Pause className="w-4 h-4 fill-white" />
+                          <div className="w-7 h-7 rounded-full bg-pink-500 flex items-center justify-center text-white shadow-lg animate-pulse">
+                            <Pause className="w-3.5 h-3.5 fill-current" />
+                          </div>
                         ) : (
-                          <Play className="w-4 h-4 fill-white ml-0.5" />
+                          <div className="w-7 h-7 rounded-full bg-white/90 text-black flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
+                            <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                          </div>
                         )}
                       </button>
                     </div>
 
+                    {/* Song Info */}
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-white truncate">{song.title}</span>
-                        {isPlaying && (
-                          <span className="flex items-center gap-0.5">
-                            <span className="w-1 h-3 bg-pink-500 rounded-full animate-pulse"></span>
-                            <span className="w-1 h-2 bg-pink-400 rounded-full animate-pulse delay-75"></span>
-                            <span className="w-1 h-3.5 bg-pink-500 rounded-full animate-pulse delay-150"></span>
-                          </span>
+                      <p className={`text-xs font-bold truncate transition-colors ${
+                        isPlaying ? 'text-pink-400' : 'text-white'
+                      }`}>
+                        {song.title}
+                      </p>
+                      <p className="text-[11px] text-zinc-400 truncate flex items-center gap-1.5">
+                        <span>{song.artist}</span>
+                        {song.genre && (
+                          <>
+                            <span className="w-1 h-1 bg-zinc-600 rounded-full"></span>
+                            <span className="text-[9px] text-zinc-400 uppercase tracking-wide px-1.5 py-0.5 rounded bg-white/5 border border-white/10">
+                              {song.genre}
+                            </span>
+                          </>
                         )}
-                      </div>
-                      <p className="text-[11px] text-zinc-400 truncate">
-                        {song.artist} � <span className="text-zinc-500">{song.genre}</span>
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 pl-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSelect(song);
-                      }}
-                      className={`text-xs px-3 py-1.5 rounded-full font-semibold transition-all ${
-                        isSelected
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'
-                      }`}
-                    >
-                      {isSelected ? 'Selected' : 'Use'}
-                    </button>
+                  {/* Actions / Status */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* Animated Equalizer when playing */}
+                    {isPlaying && (
+                      <div className="flex items-center gap-0.5 h-4 px-2 py-1 rounded-full bg-pink-500/10 border border-pink-500/20">
+                        <span className="w-0.5 h-3 bg-pink-400 rounded-full animate-pulse"></span>
+                        <span className="w-0.5 h-4 bg-pink-400 rounded-full animate-bounce"></span>
+                        <span className="w-0.5 h-2 bg-pink-400 rounded-full animate-pulse"></span>
+                      </div>
+                    )}
+
+                    {isSelected ? (
+                      <div className="w-6 h-6 rounded-full bg-gradient-cosmic flex items-center justify-center text-white shadow-[0_0_10px_rgba(236,72,153,0.6)]">
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      </div>
+                    ) : (
+                      <div className="text-[11px] font-semibold text-zinc-500 group-hover:text-pink-400 transition-colors px-2 py-1 rounded-lg bg-white/5 border border-white/5">
+                        Select
+                      </div>
+                    )}
                   </div>
                 </div>
               );
             })
-          ) : (
-            <div className="text-center py-10 text-zinc-500 text-xs">
-              No songs found matching &ldquo;{searchQuery}&rdquo;
-            </div>
           )}
+        </div>
+
+        {/* Footer info banner */}
+        <div className="p-3 border-t border-white/10 bg-white/[0.02] flex items-center justify-between text-[11px] text-zinc-400">
+          <span className="flex items-center gap-1.5">
+            <Volume2 className="w-3.5 h-3.5 text-pink-400" />
+            Tap album art to preview audio
+          </span>
+          <span className="text-zinc-500">Global & Hindi Music Hub</span>
         </div>
       </div>
     </div>
