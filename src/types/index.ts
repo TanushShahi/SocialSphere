@@ -3,13 +3,15 @@ export interface User {
   username: string;
   name: string;
   avatar: string;
-  bio: string;
+  bio?: string;
   website?: string;
   followersCount: number;
   followingCount: number;
   postsCount: number;
   isVerified?: boolean;
   isFollowing?: boolean;
+  following?: string[];
+  followers?: string[];
   blockedUserIds?: string[];
 }
 

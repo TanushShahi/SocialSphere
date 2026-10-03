@@ -25,9 +25,13 @@ import { FilterType, SongTrack } from '../../types';
 import { MusicPickerModal } from '../music/MusicPickerModal';
 import { StoryMultiPhotoPromptModal } from './StoryMultiPhotoPromptModal';
 import { generateStoryCollage } from '../../utils/collageGenerator';
+import { compressImage } from '../../utils/imageCompressor';
 
 export const CreatePostModal: React.FC = () => {
   const { isCreatePostOpen, setIsCreatePostOpen, addNewPost, addNewStory, currentUser } = useApp();
+
+  const displayName = currentUser?.name || currentUser?.username || 'Creator';
+  const firstName = displayName.split(' ')[0] || 'there';
 
   const [mediaType, setMediaType] = useState<'photo' | 'video' | 'thought' | 'live'>('photo');
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
@@ -89,9 +93,9 @@ export const CreatePostModal: React.FC = () => {
     try {
       const fileList = Array.from(files);
       const compressedList = await Promise.all(
-        fileList.map(file => compressImage(file, 1080, 1080, 0.75))
+        fileList.map((file: File) => compressImage(file, 1080, 1080, 0.75))
       );
-      const validUrls = compressedList.filter(u => Boolean(u && u.length > 20));
+      const validUrls = compressedList.filter((u: string) => Boolean(u && u.length > 20));
       if (validUrls.length > 0) {
         setSelectedImages(prev => [...prev, ...validUrls]);
         if (shareAsStory && (selectedImages.length + validUrls.length) > 1) {
@@ -271,20 +275,20 @@ export const CreatePostModal: React.FC = () => {
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-full bg-gradient-cosmic p-[2px] shadow-md shadow-pink-500/20 flex-shrink-0">
                 <img
-                  src={currentUser.avatar}
-                  alt={currentUser.username}
+                  src={currentUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'}
+                  alt={currentUser?.username || 'creator'}
                   className="w-full h-full rounded-full object-cover border border-black"
                 />
               </div>
               <div>
                 <p className="text-xs font-black text-white flex items-center gap-1">
-                  <span>{currentUser.name}</span>
-                  {currentUser.isVerified && (
+                  <span>{displayName}</span>
+                  {currentUser?.isVerified && (
                     <span className="w-3.5 h-3.5 bg-blue-500 rounded-full flex items-center justify-center text-[8px] text-white font-bold">✓</span>
                   )}
                 </p>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-[10px] text-zinc-400">@{currentUser.username}</span>
+                  <span className="text-[10px] text-zinc-400">@{currentUser?.username || 'creator'}</span>
                   <span className="text-[10px] text-zinc-500">•</span>
                   <button
                     type="button"
@@ -320,7 +324,7 @@ export const CreatePostModal: React.FC = () => {
             <textarea
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              placeholder={`What's on your mind, ${currentUser.name.split(' ')[0]}? Share a moment or spark an idea...`}
+              placeholder={`What's on your mind, ${firstName}? Share a moment or spark an idea...`}
               rows={3}
               className="w-full bg-transparent text-sm sm:text-base text-white placeholder-zinc-500 focus:outline-none resize-none border-b border-white/10 pb-3"
             />
@@ -599,11 +603,11 @@ export const CreatePostModal: React.FC = () => {
         <MusicPickerModal
           isOpen={isMusicPickerOpen}
           onClose={() => setIsMusicPickerOpen(false)}
-          onSelectTrack={(track) => {
-            setSelectedSong(track);
+          onSelectSong={(song: SongTrack) => {
+            setSelectedSong(song);
             setIsMusicPickerOpen(false);
           }}
-          currentTrackId={selectedSong?.id}
+          selectedSongId={selectedSong?.id}
         />
       )}
 
@@ -611,12 +615,13 @@ export const CreatePostModal: React.FC = () => {
       <StoryMultiPhotoPromptModal
         isOpen={isStoryPromptOpen}
         photoCount={selectedImages.length}
-        onSelectChoice={(mode) => {
-          setStoryMode(mode);
+        selectedMode={storyMode}
+        onSelectMode={(mode: 'separate' | 'collage') => setStoryMode(mode)}
+        onConfirm={() => {
           setIsStoryPromptOpen(false);
-          executePost(mode);
+          executePost(storyMode);
         }}
-        onCancel={() => setIsStoryPromptOpen(false)}
+        onClose={() => setIsStoryPromptOpen(false)}
       />
     </div>
   );

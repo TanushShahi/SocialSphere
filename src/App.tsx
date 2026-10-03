@@ -29,7 +29,8 @@ const AppContent: React.FC = () => {
     endCall, 
     acceptIncomingCall,
     isInstallModalOpen,
-    setIsInstallModalOpen
+    setIsInstallModalOpen,
+    setIsCreatePostOpen
   } = useApp();
 
   // If user is not authenticated, display the full Instagram Auth experience
@@ -61,7 +62,9 @@ const AppContent: React.FC = () => {
       {/* 5. Drawers & Modals */}
       <SearchDrawer />
       <NotificationsDrawer />
-      <CreatePostModal />
+      <ErrorBoundary fallback={null} onReset={() => setIsCreatePostOpen(false)}>
+        <CreatePostModal />
+      </ErrorBoundary>
       <StoryViewerModal />
       <PostDetailModal />
       <CallModal session={callSession} onEndCall={endCall} onAcceptCall={acceptIncomingCall} />

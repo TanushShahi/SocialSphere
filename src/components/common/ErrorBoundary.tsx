@@ -3,6 +3,8 @@ import { AlertCircle, RefreshCw } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
+  fallback?: ReactNode;
+  onReset?: () => void;
 }
 
 interface State {
@@ -25,11 +27,15 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleReset = () => {
+    this.props.onReset?.();
     this.setState({ hasError: false, error: null });
   };
 
   public render() {
     if (this.state.hasError) {
+      if (this.props.fallback !== undefined) {
+        return this.props.fallback;
+      }
       return (
         <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center select-none">
           <div className="w-16 h-16 rounded-full bg-rose-500/20 border border-rose-500/40 flex items-center justify-center mb-4 text-rose-400">

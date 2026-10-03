@@ -106,7 +106,7 @@ export const StoryMultiPhotoPromptModal: React.FC<StoryMultiPhotoPromptModalProp
                 )}
               </div>
               <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                Combine all ${photoCount} photos into <strong className="text-zinc-200">one single 9:16 layout grid frame</strong> with automatic aesthetic framing.
+                Combine all {photoCount} photos into <strong className="text-zinc-200">one single 9:16 layout grid frame</strong> with automatic aesthetic framing.
               </p>
             </div>
           </div>

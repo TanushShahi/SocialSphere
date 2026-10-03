@@ -732,8 +732,8 @@ export const ProfileView: React.FC = () => {
       {/* Follow List Modal */}
       {isFollowModalOpen && (
         <FollowListModal
-          userId={currentUser.id}
-          username={currentUser.username}
+          isOpen={isFollowModalOpen}
+          targetUser={currentUser}
           initialTab={followModalInitialTab}
           onClose={() => setIsFollowModalOpen(false)}
         />
@@ -742,6 +742,7 @@ export const ProfileView: React.FC = () => {
       {/* Blocked Accounts Modal */}
       {isBlockedModalOpen && (
         <BlockedAccountsModal
+          isOpen={isBlockedModalOpen}
           onClose={() => setIsBlockedModalOpen(false)}
         />
       )}
