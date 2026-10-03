@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   Heart, 
   MessageCircle, 
@@ -9,15 +9,19 @@ import {
   Music, 
   Film, 
   Play, 
+  Pause,
   Send, 
   Volume2, 
   VolumeX, 
   X,
-  Bookmark
+  Bookmark,
+  ExternalLink,
+  Flame
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Post, Reel } from '../../types';
 import { TRENDING_INSTAGRAM_REELS } from '../reels/trendingReels';
+import { CURATED_SONGS } from '../music/curatedTracks';
 
 export const EXPLORE_CATEGORIES = [
   'All Universe',
@@ -34,6 +38,16 @@ type ExploreItem =
   | { kind: 'post'; data: Post }
   | { kind: 'reel'; data: Reel };
 
+const resolveAudioUrl = (reel: Reel): string => {
+  if (reel.audioUrl) return reel.audioUrl;
+  const match = CURATED_SONGS.find(s => 
+    reel.audioTitle.toLowerCase().includes(s.title.toLowerCase()) ||
+    s.title.toLowerCase().includes(reel.audioTitle.toLowerCase()) ||
+    reel.audioTitle.toLowerCase().includes(s.artist.toLowerCase())
+  );
+  return match?.audioUrl || CURATED_SONGS[0]?.audioUrl || '';
+};
+
 export const ExploreView: React.FC = () => {
   const { 
     openPostDetail, 
@@ -43,6 +57,7 @@ export const ExploreView: React.FC = () => {
     openShareModal, 
     toggleLikeReel, 
     toggleSaveReel, 
+    setActiveTab,
     currentUser 
   } = useApp();
 
@@ -50,6 +65,11 @@ export const ExploreView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedReel, setSelectedReel] = useState<Reel | null>(null);
   const [isReelMuted, setIsReelMuted] = useState(false);
+  const [isModalPlaying, setIsModalPlaying] = useState(true);
+  const [needsGesture, setNeedsGesture] = useState(false);
+
+  const modalVideoRef = useRef<HTMLVideoElement | null>(null);
+  const modalAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Combine user reels and trending Instagram reels
   const allReels = useMemo(() => {
@@ -116,6 +136,67 @@ export const ExploreView: React.FC = () => {
     });
   }, [unifiedItems, searchQuery]);
 
+  // When selectedReel is opened in modal: automatically play video AND music with sound!
+  useEffect(() => {
+    if (!selectedReel) {
+      if (modalAudioRef.current) modalAudioRef.current.pause();
+      if (modalVideoRef.current) modalVideoRef.current.pause();
+      return;
+    }
+
+    setIsModalPlaying(true);
+    const video = modalVideoRef.current;
+    const audio = modalAudioRef.current;
+
+    if (video) {
+      video.muted = isReelMuted;
+      video.play().catch(() => {});
+    }
+
+    if (audio) {
+      audio.muted = isReelMuted;
+      audio.currentTime = 0;
+      audio.play().then(() => {
+        setNeedsGesture(false);
+      }).catch(() => {
+        setNeedsGesture(true);
+      });
+    }
+  }, [selectedReel]);
+
+  // Sync mute state in modal
+  useEffect(() => {
+    if (modalVideoRef.current) modalVideoRef.current.muted = isReelMuted;
+    if (modalAudioRef.current) {
+      modalAudioRef.current.muted = isReelMuted;
+      if (!isReelMuted && isModalPlaying && selectedReel) {
+        modalAudioRef.current.play().catch(() => setNeedsGesture(true));
+      }
+    }
+  }, [isReelMuted, isModalPlaying, selectedReel]);
+
+  const toggleModalPlayPause = () => {
+    if (needsGesture && modalAudioRef.current) {
+      modalAudioRef.current.muted = isReelMuted;
+      modalAudioRef.current.play().catch(() => {});
+      setNeedsGesture(false);
+      return;
+    }
+
+    setIsModalPlaying(prev => {
+      const next = !prev;
+      if (modalVideoRef.current) {
+        if (next) modalVideoRef.current.play().catch(() => {});
+        else modalVideoRef.current.pause();
+      }
+      if (modalAudioRef.current) {
+        if (next) modalAudioRef.current.play().catch(() => {});
+        else modalAudioRef.current.pause();
+      }
+      return next;
+    });
+  };
+
   const handleShareItem = (e: React.MouseEvent, item: ExploreItem) => {
     e.stopPropagation();
     if (item.kind === 'post') {
@@ -152,7 +233,35 @@ export const ExploreView: React.FC = () => {
   };
 
   return (
-    <div className="max-w-[1050px] mx-auto py-5 px-3 sm:px-6 space-y-6 animate-fade-in text-white select-none">
+    <div className="max-w-[1050px] mx-auto py-5 px-3 sm:px-6 space-y-5 animate-fade-in text-white select-none">
+      {/* Top Banner: Quick Jump to Live Instagram Reels Feed */}
+      <div 
+        onClick={() => setActiveTab('reels')}
+        className="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-purple-900/40 via-pink-900/40 to-amber-900/30 border border-pink-500/30 flex items-center justify-between cursor-pointer hover:border-pink-500/60 transition-all shadow-xl group"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-cosmic flex items-center justify-center text-white shadow-lg shadow-pink-500/30 group-hover:scale-105 transition-transform">
+            <Flame className="w-5 h-5 text-amber-300 animate-pulse" />
+          </div>
+          <div>
+            <h4 className="text-xs sm:text-sm font-bold flex items-center gap-2">
+              Trending Instagram Reels
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-500 text-white font-extrabold uppercase animate-pulse">
+                Live Sound
+              </span>
+            </h4>
+            <p className="text-[11px] text-zinc-400">
+              Watch viral vertical transmissions with music playing automatically
+            </p>
+          </div>
+        </div>
+
+        <button className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white flex items-center gap-1 transition-colors border border-white/10">
+          <span>Watch Feed</span>
+          <Play className="w-3 h-3 fill-white" />
+        </button>
+      </div>
+
       {/* Top Cosmic Search Bar */}
       <div className="relative max-w-lg mx-auto">
         <div className="absolute inset-0 bg-gradient-cosmic rounded-2xl opacity-20 blur-md pointer-events-none"></div>
@@ -198,7 +307,7 @@ export const ExploreView: React.FC = () => {
       {/* Holographic Mosaic Grid */}
       {filteredItems.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-4">
-          {filteredItems.map((item, idx) => {
+          {filteredItems.map((item) => {
             const isReel = item.kind === 'reel';
             const isIgReel = isReel && item.data.id.startsWith('reel_ig');
 
@@ -210,11 +319,19 @@ export const ExploreView: React.FC = () => {
                   onClick={() => setSelectedReel(reel)}
                   className="relative rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer group select-none bg-zinc-950 border border-white/10 aspect-[9/16] shadow-lg hover:shadow-pink-500/20 transition-all hover:scale-[1.01]"
                 >
-                  <img
-                    src={reel.thumbnailUrl}
-                    alt={reel.caption}
+                  {/* Video preview with muted autoplay on hover */}
+                  <video
+                    src={reel.videoUrl}
+                    poster={reel.thumbnailUrl}
+                    muted
+                    loop
+                    playsInline
+                    onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.pause();
+                      e.currentTarget.currentTime = 0;
+                    }}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    loading="lazy"
                   />
 
                   {/* Reel Type Badges */}
@@ -233,7 +350,7 @@ export const ExploreView: React.FC = () => {
                   {/* Audio pill at top right */}
                   {reel.audioTitle && (
                     <div className="absolute top-2.5 right-2.5 z-10 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-full flex items-center gap-1 text-[9px] text-white border border-white/10 max-w-[100px] truncate">
-                      <Music className="w-2.5 h-2.5 text-pink-400 shrink-0" />
+                      <Music className="w-2.5 h-2.5 text-pink-400 shrink-0 animate-pulse" />
                       <span className="truncate">{reel.audioTitle}</span>
                     </div>
                   )}
@@ -254,7 +371,7 @@ export const ExploreView: React.FC = () => {
                   </button>
 
                   {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 text-white backdrop-blur-[2px] p-4 text-center">
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 text-white backdrop-blur-[2px] p-4 text-center pointer-events-none">
                     <img 
                       src={reel.user.avatar} 
                       alt={reel.user.username} 
@@ -312,7 +429,7 @@ export const ExploreView: React.FC = () => {
                 </button>
 
                 {/* Hover Overlay */}
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2.5 text-white backdrop-blur-[3px] p-4 text-center">
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2.5 text-white backdrop-blur-[3px] p-4 text-center pointer-events-none">
                   <img 
                     src={post.user.avatar} 
                     alt={post.user.username} 
@@ -326,7 +443,7 @@ export const ExploreView: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-1">
                       <MessageCircle className="w-4 h-4 fill-white text-white" />
-                      <span>{post.comments.length.toLocaleString()}</span>
+                      <span>{post.comments.length}</span>
                     </div>
                   </div>
                 </div>
@@ -362,7 +479,7 @@ export const ExploreView: React.FC = () => {
       {selectedReel && (
         <div 
           onClick={() => setSelectedReel(null)}
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-2 sm:p-6 animate-fadeIn"
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-2 sm:p-6 animate-fadeIn"
         >
           {/* Close button */}
           <button
@@ -377,9 +494,22 @@ export const ExploreView: React.FC = () => {
             onClick={e => e.stopPropagation()}
             className="relative w-full max-w-[420px] h-[85vh] max-h-[760px] bg-zinc-950 rounded-3xl overflow-hidden shadow-2xl border border-zinc-800 flex flex-col"
           >
+            {/* Dedicated Audio Element for Music Playback */}
+            <audio
+              ref={modalAudioRef}
+              src={resolveAudioUrl(selectedReel)}
+              loop
+              preload="auto"
+              muted={isReelMuted}
+            />
+
             {/* Video Player */}
-            <div className="relative flex-1 bg-black overflow-hidden flex items-center justify-center">
+            <div 
+              onClick={toggleModalPlayPause}
+              className="relative flex-1 bg-black overflow-hidden flex items-center justify-center cursor-pointer group/modalvideo"
+            >
               <video
+                ref={modalVideoRef}
                 src={selectedReel.videoUrl}
                 poster={selectedReel.thumbnailUrl}
                 loop
@@ -389,18 +519,66 @@ export const ExploreView: React.FC = () => {
                 className="w-full h-full object-cover"
               />
 
+              {/* Pause/Play Center Overlay when paused */}
+              {!isModalPlaying && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/30">
+                  <div className="w-16 h-16 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white">
+                    <Play className="w-8 h-8 fill-white ml-1" />
+                  </div>
+                </div>
+              )}
+
+              {/* Floating Tap for sound button if browser blocked autoplay sound */}
+              {needsGesture && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (modalAudioRef.current) {
+                      modalAudioRef.current.muted = false;
+                      modalAudioRef.current.play().catch(() => {});
+                    }
+                    setIsReelMuted(false);
+                    setNeedsGesture(false);
+                  }}
+                  className="absolute top-16 left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold text-xs rounded-full shadow-2xl flex items-center gap-1.5 animate-bounce"
+                >
+                  <Volume2 className="w-4 h-4 animate-pulse" />
+                  <span>Tap to Unmute Music 🔊</span>
+                </button>
+              )}
+
               {/* Sound Toggle */}
               <button
-                onClick={() => setIsReelMuted(prev => !prev)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsReelMuted(prev => !prev);
+                  setNeedsGesture(false);
+                }}
                 className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-md transition-transform active:scale-95"
               >
-                {isReelMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                {isReelMuted ? <VolumeX className="w-5 h-5 text-zinc-300" /> : <Volume2 className="w-5 h-5 text-pink-400" />}
+              </button>
+
+              {/* Watch on Reels Feed Shortcut at top-left */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedReel(null);
+                  setActiveTab('reels');
+                }}
+                className="absolute top-4 left-4 z-20 px-3 py-1.5 rounded-full bg-black/60 hover:bg-pink-600 text-white text-[11px] font-bold backdrop-blur-md transition-all flex items-center gap-1 shadow-md border border-white/10"
+              >
+                <Film className="w-3.5 h-3.5" />
+                <span>Open in Reels Tab</span>
               </button>
 
               {/* Overlay Actions Stack on right */}
               <div className="absolute right-3 bottom-14 z-20 flex flex-col items-center gap-4 text-white">
                 <button
-                  onClick={() => toggleLikeReel(selectedReel.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleLikeReel(selectedReel.id);
+                  }}
                   className="p-2 rounded-full hover:bg-black/40 transition-transform active:scale-75"
                 >
                   <Heart className={`w-7 h-7 drop-shadow-md ${selectedReel.isLiked ? 'text-rose-500 fill-rose-500' : 'stroke-[2]'}`} />
@@ -421,7 +599,10 @@ export const ExploreView: React.FC = () => {
                 </span>
 
                 <button
-                  onClick={() => toggleSaveReel(selectedReel.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleSaveReel(selectedReel.id);
+                  }}
                   className="p-2 rounded-full hover:bg-black/40 transition-transform active:scale-75"
                 >
                   <Bookmark className={`w-6 h-6 drop-shadow-md ${selectedReel.isSaved ? 'fill-white stroke-white' : 'stroke-[2]'}`} />
@@ -429,7 +610,7 @@ export const ExploreView: React.FC = () => {
               </div>
 
               {/* Creator & Caption Overlay */}
-              <div className="absolute left-3 right-16 bottom-4 z-20 space-y-1.5 text-white drop-shadow-lg">
+              <div className="absolute left-3 right-16 bottom-4 z-20 space-y-1.5 text-white drop-shadow-lg pointer-events-auto">
                 <div className="flex items-center gap-2">
                   <img 
                     src={selectedReel.user.avatar} 
@@ -439,7 +620,7 @@ export const ExploreView: React.FC = () => {
                   <span className="font-bold text-xs">@{selectedReel.user.username}</span>
                   {selectedReel.id.startsWith('reel_ig') && (
                     <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 via-pink-500 to-purple-600 text-white">
-                      Instagram
+                      Instagram Reel
                     </span>
                   )}
                 </div>
@@ -449,9 +630,9 @@ export const ExploreView: React.FC = () => {
                 </p>
 
                 {selectedReel.audioTitle && (
-                  <div className="flex items-center gap-1.5 text-[11px] text-zinc-300 bg-black/40 px-2 py-0.5 rounded-full w-fit backdrop-blur-md">
+                  <div className="flex items-center gap-1.5 text-[11px] text-zinc-200 bg-black/50 px-2.5 py-0.5 rounded-full w-fit backdrop-blur-md border border-white/10">
                     <Music className="w-3 h-3 text-pink-400 animate-pulse" />
-                    <span className="truncate max-w-[200px]">{selectedReel.audioTitle}</span>
+                    <span className="truncate max-w-[200px] font-medium">{selectedReel.audioTitle}</span>
                   </div>
                 )}
               </div>

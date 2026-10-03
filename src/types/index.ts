@@ -100,6 +100,7 @@ export interface Reel {
   thumbnailUrl: string;
   caption: string;
   audioTitle: string;
+  audioUrl?: string;
   likesCount: number;
   commentsCount: number;
   sharesCount: number;
