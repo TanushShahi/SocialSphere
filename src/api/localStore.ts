@@ -6,6 +6,7 @@ const POSTS_KEY = 'sphere_local_posts';
 const STORIES_KEY = 'sphere_local_stories';
 const CONVERSATIONS_KEY = 'sphere_local_conversations';
 const CURRENT_USER_ID_KEY = 'sphere_current_user_id';
+const CURRENT_USER_KEY = 'sphere_current_user';
 const FOLLOWS_KEY = 'sphere_local_follows';
 const BLOCKS_KEY = 'sphere_local_blocks';
 
@@ -41,13 +42,13 @@ function setItem<T>(key: string, value: T): void {
 }
 
 export async function initLocalStore(): Promise<void> {
-  const keys = [USERS_KEY, POSTS_KEY, STORIES_KEY, CONVERSATIONS_KEY, FOLLOWS_KEY, BLOCKS_KEY];
+  const keys = [USERS_KEY, POSTS_KEY, STORIES_KEY, CONVERSATIONS_KEY, FOLLOWS_KEY, BLOCKS_KEY, CURRENT_USER_KEY, CURRENT_USER_ID_KEY];
   for (const key of keys) {
     const idbVal = await idbGet<any>(key);
     if (idbVal !== null && idbVal !== undefined) {
       memCache[key] = idbVal;
       try {
-        localStorage.setItem(key, JSON.stringify(idbVal));
+        localStorage.setItem(key, typeof idbVal === 'string' ? idbVal : JSON.stringify(idbVal));
       } catch {
         // Kept in memCache and IndexedDB safely
       }
@@ -61,14 +62,44 @@ export async function initLocalStore(): Promise<void> {
 }
 
 function getCurrentUserId(): string | null {
-  return localStorage.getItem(CURRENT_USER_ID_KEY);
+  const memId = memCache[CURRENT_USER_ID_KEY];
+  if (memId && typeof memId === 'string') return memId;
+  const localId = localStorage.getItem(CURRENT_USER_ID_KEY);
+  if (localId) return localId;
+  
+  // Try extracting from sphere_current_user
+  try {
+    const cachedUser = localStorage.getItem(CURRENT_USER_KEY);
+    if (cachedUser) {
+      const parsed = JSON.parse(cachedUser);
+      if (parsed?.id) return parsed.id;
+    }
+  } catch {}
+
+  // Try extracting from sphere_token (format: local_jwt_<userId>_<timestamp>)
+  const token = localStorage.getItem('sphere_token');
+  if (token && token.startsWith('local_jwt_')) {
+    const parts = token.split('_');
+    if (parts.length >= 3) {
+      return parts.slice(2, parts.length - 1).join('_');
+    }
+  }
+
+  return null;
 }
 
 function setCurrentUserId(id: string | null): void {
+  memCache[CURRENT_USER_ID_KEY] = id;
   if (id) {
-    localStorage.setItem(CURRENT_USER_ID_KEY, id);
+    try {
+      localStorage.setItem(CURRENT_USER_ID_KEY, id);
+    } catch {}
+    idbSet(CURRENT_USER_ID_KEY, id).catch(() => {});
   } else {
-    localStorage.removeItem(CURRENT_USER_ID_KEY);
+    try {
+      localStorage.removeItem(CURRENT_USER_ID_KEY);
+    } catch {}
+    idbSet(CURRENT_USER_ID_KEY, null).catch(() => {});
   }
 }
 
@@ -167,24 +198,58 @@ export const localStore = {
 
     async me(): Promise<{ user: User }> {
       const currentId = getCurrentUserId();
-      if (!currentId) throw new Error('Not authenticated');
-
       const users = getItem<StoredUser[]>(USERS_KEY, []);
-      const found = users.find(u => u.id === currentId);
-      if (!found) throw new Error('User not found');
+      
+      let found: StoredUser | undefined;
+      if (currentId) {
+        found = users.find(u => u.id === currentId);
+      }
+
+      // If not found by ID, try finding from cached user
+      if (!found) {
+        try {
+          const cachedRaw = localStorage.getItem(CURRENT_USER_KEY);
+          if (cachedRaw) {
+            const parsed = JSON.parse(cachedRaw);
+            if (parsed?.id) {
+              found = parsed;
+              if (!users.some(u => u.id === parsed.id)) {
+                users.push(parsed);
+                setItem(USERS_KEY, users);
+              }
+            }
+          }
+        } catch {}
+      }
+
+      // If still not found, but we have users in storage, fallback to first user
+      if (!found && users.length > 0) {
+        found = users[0];
+        setCurrentUserId(found.id);
+      }
+
+      if (!found) {
+        throw new Error('Not authenticated');
+      }
 
       const follows = getFollows();
-      const followersCount = follows.filter(f => f.followingId === currentId).length;
-      const followingCount = follows.filter(f => f.followerId === currentId).length;
+      const followersCount = follows.filter(f => f.followingId === found!.id).length;
+      const followingCount = follows.filter(f => f.followerId === found!.id).length;
 
       const { password: _, email: __, ...userClean } = found;
-      return { 
-        user: { 
-          ...userClean, 
-          followersCount, 
-          followingCount 
-        } as User 
-      };
+      const finalUser = { 
+        ...userClean, 
+        followersCount: followersCount || found.followersCount || 0, 
+        followingCount: followingCount || found.followingCount || 0 
+      } as User;
+
+      // Update cached user
+      try {
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(finalUser));
+        localStorage.setItem(CURRENT_USER_ID_KEY, finalUser.id);
+      } catch {}
+
+      return { user: finalUser };
     }
   },
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'social-sphere-v2';
+const CACHE_NAME = 'social-sphere-v7';
 
 self.addEventListener('install', () => {
   self.skipWaiting();
@@ -9,7 +9,10 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) return caches.delete(key);
+          if (key !== CACHE_NAME) {
+            console.log('[SW] Purging old cache:', key);
+            return caches.delete(key);
+          }
         })
       )
     )

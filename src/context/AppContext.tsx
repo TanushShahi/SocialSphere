@@ -129,9 +129,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [activeTab, setActiveTab] = useState<TabType>('feed');
 
-  // Auth & User state
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(Boolean(getToken()));
+  // Auth & User state (initialized synchronously so page reload never flashes AuthPage)
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    try {
+      const raw = localStorage.getItem('sphere_current_user');
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      console.error('Failed to parse cached sphere_current_user:', e);
+    }
+    return null;
+  });
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    const token = getToken();
+    const rawUser = localStorage.getItem('sphere_current_user');
+    return Boolean(token && rawUser);
+  });
 
   // Entity lists
   const [posts, setPosts] = useState<Post[]>([]);
@@ -277,10 +289,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (token) {
         try {
           const res = await api.auth.me();
-          setCurrentUser(res.user);
-          setIsAuthenticated(true);
-        } catch {
-          setToken(null);
+          if (res && res.user) {
+            setCurrentUser(res.user);
+            setIsAuthenticated(true);
+            try {
+              localStorage.setItem('sphere_current_user', JSON.stringify(res.user));
+              localStorage.setItem('sphere_current_user_id', res.user.id);
+            } catch {}
+          }
+        } catch (err) {
+          console.warn('[Sphere] me() verification warning, retaining local session:', err);
+          const cached = localStorage.getItem('sphere_current_user');
+          if (!cached) {
+            setToken(null);
+            setCurrentUser(null);
+            setIsAuthenticated(false);
+          }
+        }
+      } else {
+        const cached = localStorage.getItem('sphere_current_user');
+        if (!cached) {
           setCurrentUser(null);
           setIsAuthenticated(false);
         }
@@ -294,6 +322,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const login = async (loginInput: string, passwordInput: string) => {
     const res = await api.auth.login(loginInput, passwordInput);
     setToken(res.token);
+    try {
+      localStorage.setItem('sphere_current_user', JSON.stringify(res.user));
+      localStorage.setItem('sphere_current_user_id', res.user.id);
+    } catch {}
     setCurrentUser(res.user);
     setIsAuthenticated(true);
     await refreshData();
@@ -302,6 +334,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const register = async (usernameInput: string, emailInput: string, passwordInput: string, nameInput: string) => {
     const res = await api.auth.register(usernameInput, emailInput, passwordInput, nameInput);
     setToken(res.token);
+    try {
+      localStorage.setItem('sphere_current_user', JSON.stringify(res.user));
+      localStorage.setItem('sphere_current_user_id', res.user.id);
+    } catch {}
     setCurrentUser(res.user);
     setIsAuthenticated(true);
     await refreshData();
@@ -309,6 +345,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logout = () => {
     setToken(null);
+    try {
+      localStorage.removeItem('sphere_current_user');
+      localStorage.removeItem('sphere_current_user_id');
+      localStorage.removeItem('sphere_token');
+    } catch {}
     setCurrentUser(null);
     setIsAuthenticated(false);
     setActiveTab('feed');
@@ -318,6 +359,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateCurrentUser = async (updates: Partial<User>) => {
     const res = await api.users.updateProfile(updates);
     setCurrentUser(res.user);
+    try {
+      localStorage.setItem('sphere_current_user', JSON.stringify(res.user));
+      localStorage.setItem('sphere_current_user_id', res.user.id);
+    } catch {}
     setPosts(prev => prev.map(p => p.user.id === res.user.id ? { ...p, user: { ...p.user, ...res.user } } : p));
     setStories(prev => prev.map(s => s.user.id === res.user.id ? { ...s, user: { ...s.user, ...res.user } } : s));
   };

@@ -187,8 +187,9 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
         isPlayingAudio ? 'aerogel-card-glow' : 'aerogel-card'
       }`}>
         {/* 1. Celestial Header */}
+        {/* 1. Clean Instagram Header */}
         <div className="flex items-center justify-between pb-2.5 sm:pb-3 px-1">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             {/* Luminous Avatar Orb */}
             <div className="relative w-10 h-10 rounded-full bg-gradient-cosmic p-[1.5px] shadow-lg shadow-pink-500/20 cursor-pointer hover:scale-105 transition-transform flex-shrink-0">
               <img 
@@ -198,61 +199,54 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
               />
             </div>
 
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-bold hover:underline cursor-pointer text-white flex items-center gap-1">
-                  {post.user.name || post.user.username}
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-xs font-bold hover:underline cursor-pointer text-white truncate max-w-[130px] sm:max-w-[200px] flex items-center gap-1">
+                  {post.user.username}
                   {post.user.isVerified && (
-                    <span className="w-3.5 h-3.5 bg-blue-500 rounded-full flex items-center justify-center text-[8px] text-white font-black" title="Verified">
+                    <span className="w-3.5 h-3.5 bg-blue-500 rounded-full flex items-center justify-center text-[8px] text-white font-black flex-shrink-0" title="Verified">
                       ✓
                     </span>
                   )}
                 </span>
-                <span className="text-[11px] text-zinc-400">@{post.user.username}</span>
-                <span className="text-[10px] text-zinc-500">• {formatTimeAgo(post.createdAt)}</span>
+                <span className="text-[11px] text-zinc-500 flex-shrink-0">• {formatTimeAgo(post.createdAt)}</span>
 
                 {!isOwner && currentUser && (
-                  <button
-                    onClick={() => toggleFollowUser(post.user.id)}
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors ml-1 ${
-                      post.user.isFollowing
-                        ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                        : 'bg-gradient-cosmic text-white shadow-sm'
-                    }`}
-                  >
-                    {post.user.isFollowing ? 'Following' : 'Follow'}
-                  </button>
+                  <>
+                    <span className="text-zinc-600 text-xs flex-shrink-0">•</span>
+                    <button
+                      onClick={() => toggleFollowUser(post.user.id)}
+                      className={`text-[11px] font-semibold transition-colors flex-shrink-0 ${
+                        post.user.isFollowing
+                          ? 'text-zinc-400 hover:text-white'
+                          : 'text-blue-400 hover:text-blue-300 font-bold'
+                      }`}
+                    >
+                      {post.user.isFollowing ? 'Following' : 'Follow'}
+                    </button>
+                  </>
                 )}
               </div>
 
-              {post.location && (
-                <span className="text-[10px] text-zinc-400 flex items-center gap-1 truncate max-w-[220px] mt-0.5">
-                  <span>📍</span> {post.location}
-                </span>
-              )}
-
-              {/* Soundtrack Badge under header */}
-              {post.songTitle && (
-                <button
-                  type="button"
-                  onClick={toggleAudio}
-                  className="flex items-center gap-1.5 text-[11px] text-pink-400/90 hover:text-pink-300 mt-0.5 transition-colors group cursor-pointer text-left"
-                  title="Play / Pause song"
-                >
-                  <Music className={`w-3 h-3 ${isPlayingAudio ? 'animate-bounce text-pink-400' : 'text-zinc-400'}`} />
-                  <span className="truncate max-w-[210px] font-medium">
-                    {post.songArtist ? `${post.songArtist} • ` : ''}{post.songTitle}
-                  </span>
-                  {isPlayingAudio ? (
-                    <span className="flex items-center gap-0.5 ml-1">
-                      <span className="w-0.5 h-2 bg-pink-400 rounded-full animate-pulse"></span>
-                      <span className="w-0.5 h-3 bg-purple-400 rounded-full animate-pulse delay-75"></span>
-                      <span className="w-0.5 h-1.5 bg-pink-400 rounded-full animate-pulse delay-150"></span>
+              {(post.location || post.songTitle) && (
+                <div className="flex items-center gap-2 mt-0.5 text-[10px] text-zinc-400 min-w-0">
+                  {post.location && (
+                    <span className="truncate max-w-[140px] flex items-center gap-0.5">
+                      <span>📍</span> {post.location}
                     </span>
-                  ) : (
-                    <Play className="w-2.5 h-2.5 text-zinc-400 ml-0.5 fill-current opacity-70" />
                   )}
-                </button>
+                  {post.songTitle && (
+                    <button
+                      type="button"
+                      onClick={toggleAudio}
+                      className="flex items-center gap-1 text-pink-400/90 hover:text-pink-300 transition-colors truncate max-w-[160px]"
+                      title="Play / Pause song"
+                    >
+                      <Music className={`w-2.5 h-2.5 flex-shrink-0 ${isPlayingAudio ? 'animate-bounce text-pink-400' : 'text-zinc-400'}`} />
+                      <span className="truncate">{post.songArtist ? `${post.songArtist} • ` : ''}{post.songTitle}</span>
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -260,7 +254,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
           {/* Options Trigger (...) */}
           <button
             onClick={() => setShowOptionsMenu(true)}
-            className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+            className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-full transition-colors flex-shrink-0"
             aria-label="Post options"
           >
             <MoreHorizontal className="w-5 h-5" />
@@ -377,41 +371,34 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
         </div>
 
         {/* 3. Luminous Action Buttons Bar */}
-        {/* 3. Luminous Action Buttons Bar with Inline Metrics */}
         <div className="flex items-center justify-between pt-3 pb-1 px-1">
           <div className="flex items-center gap-4">
-            {/* Like with inline count */}
+            {/* Like button */}
             <button
               onClick={() => toggleLikePost(post.id)}
-              className="flex items-center gap-1.5 p-1 group active:scale-75 transition-transform"
+              className="p-1 group active:scale-75 transition-transform"
               aria-label="Like post"
             >
               <Heart 
-                className={`w-5 h-5 sm:w-6 sm:h-6 transition-all duration-200 ${
+                className={`w-6 h-6 transition-all duration-200 ${
                   post.isLiked 
                     ? 'text-rose-500 fill-rose-500 drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]' 
                     : 'text-zinc-300 hover:text-white stroke-[1.8]'
                 }`} 
               />
-              <span className={`text-xs font-bold ${post.isLiked ? 'text-rose-400' : 'text-zinc-300'}`}>
-                {post.likesCount >= 1000 ? `${(post.likesCount / 1000).toFixed(1)}k` : post.likesCount}
-              </span>
             </button>
 
-            {/* Comment with inline count */}
+            {/* Comment button */}
             <button
               onClick={() => {
                 if (commentInputRef.current) {
                   commentInputRef.current.focus();
                 }
               }}
-              className="flex items-center gap-1.5 p-1 text-zinc-300 hover:text-white active:scale-75 transition-transform"
+              className="p-1 text-zinc-300 hover:text-white active:scale-75 transition-transform"
               aria-label="Comment"
             >
-              <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 stroke-[1.8]" />
-              <span className="text-xs font-bold text-zinc-300">
-                {post.comments.length >= 1000 ? `${(post.comments.length / 1000).toFixed(1)}k` : post.comments.length}
-              </span>
+              <MessageCircle className="w-6 h-6 stroke-[1.8]" />
             </button>
 
             {/* Share / Multi-channel Share */}
@@ -421,7 +408,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
               aria-label="Share"
               title="Share post"
             >
-              <Send className="w-5 h-5 sm:w-6 sm:h-6 stroke-[1.8]" />
+              <Send className="w-6 h-6 stroke-[1.8]" />
             </button>
           </div>
 
@@ -432,7 +419,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
             aria-label="Save post"
           >
             <Bookmark 
-              className={`w-5 h-5 sm:w-6 sm:h-6 transition-colors ${
+              className={`w-6 h-6 transition-colors ${
                 post.isSaved 
                   ? 'text-pink-400 fill-pink-400 drop-shadow-[0_0_8px_rgba(236,72,153,0.5)]' 
                   : 'stroke-[1.8]'
@@ -441,10 +428,19 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
           </button>
         </div>
 
+        {/* 4. Bold Likes Count Row */}
+        <div className="px-1 pt-1 pb-0.5 text-xs font-bold text-white">
+          {post.likesCount > 0 ? (
+            <span>{post.likesCount.toLocaleString()} like{post.likesCount > 1 ? 's' : ''}</span>
+          ) : (
+            <span className="text-zinc-400 font-normal">Be the first to like this</span>
+          )}
+        </div>
+
         {/* 5. Caption */}
         {post.caption && (
-          <div className="px-1 text-xs text-zinc-200 leading-relaxed">
-            <span className="font-bold text-white mr-2">{post.user.username}</span>
+          <div className="px-1 pt-0.5 text-xs text-zinc-200 leading-relaxed">
+            <span className="font-bold text-white mr-1.5">{post.user.username}</span>
             <span>
               {isExpandedCaption || post.caption.length <= 100
                 ? post.caption

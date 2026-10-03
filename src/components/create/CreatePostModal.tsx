@@ -30,7 +30,7 @@ export const CreatePostModal: React.FC = () => {
   const { isCreatePostOpen, setIsCreatePostOpen, addNewPost, addNewStory, currentUser } = useApp();
 
   const [mediaType, setMediaType] = useState<'photo' | 'video' | 'thought' | 'live'>('photo');
-  const [selectedImages, setSelectedImages] = useState<string[]>([SAMPLE_POST_IMAGES[0]]);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('normal');
   const [caption, setCaption] = useState('');
   const [location, setLocation] = useState('');
@@ -60,7 +60,7 @@ export const CreatePostModal: React.FC = () => {
 
   const handleClose = () => {
     setIsCreatePostOpen(false);
-    setSelectedImages([SAMPLE_POST_IMAGES[0]]);
+    setSelectedImages([]);
     setSelectedFilter('normal');
     setCaption('');
     setLocation('');
@@ -97,8 +97,8 @@ export const CreatePostModal: React.FC = () => {
 
     Promise.all(readPromises).then(urls => {
       if (urls.length > 0) {
-        setSelectedImages(prev => [...prev.filter(u => !SAMPLE_POST_IMAGES.includes(u)), ...urls]);
-        if (shareAsStory && urls.length > 1) {
+        setSelectedImages(prev => [...prev, ...urls]);
+        if (shareAsStory && (selectedImages.length + urls.length) > 1) {
           setIsStoryPromptOpen(true);
         }
       }
@@ -106,19 +106,14 @@ export const CreatePostModal: React.FC = () => {
   };
 
   const handleRemoveImage = (indexToRemove: number) => {
-    setSelectedImages(prev => {
-      const next = prev.filter((_, i) => i !== indexToRemove);
-      return next.length > 0 ? next : [SAMPLE_POST_IMAGES[0]];
-    });
+    setSelectedImages(prev => prev.filter((_, i) => i !== indexToRemove));
   };
 
   const handleToggleSampleImage = (imgUrl: string) => {
     if (selectedImages.includes(imgUrl)) {
-      if (selectedImages.length > 1) {
-        setSelectedImages(prev => prev.filter(u => u !== imgUrl));
-      }
+      setSelectedImages(prev => prev.filter(u => u !== imgUrl));
     } else {
-      setSelectedImages(prev => [...prev.filter(u => u !== SAMPLE_POST_IMAGES[0] || selectedImages.length > 1), imgUrl]);
+      setSelectedImages(prev => [...prev, imgUrl]);
     }
   };
 
@@ -132,11 +127,13 @@ export const CreatePostModal: React.FC = () => {
       if (feeling) finalCaption += ` — feeling ${feeling}`;
       if (taggedPeople.length > 0) finalCaption += ` (with ${taggedPeople.join(', ')})`;
 
+      const imagesToPost = selectedImages.length > 0 ? selectedImages : [SAMPLE_POST_IMAGES[0]];
+
       if (shareAsStory) {
-        if (selectedImages.length > 1 && modeToUse === 'collage') {
+        if (imagesToPost.length > 1 && modeToUse === 'collage') {
           setIsGeneratingCollage(true);
           try {
-            const collageUrl = await generateStoryCollage(selectedImages);
+            const collageUrl = await generateStoryCollage(imagesToPost);
             await addNewStory(
               collageUrl,
               finalCaption,
@@ -150,7 +147,7 @@ export const CreatePostModal: React.FC = () => {
           }
         } else {
           await addNewStory(
-            selectedImages,
+            imagesToPost,
             finalCaption,
             5,
             selectedSong?.title,
@@ -160,7 +157,7 @@ export const CreatePostModal: React.FC = () => {
         }
       } else {
         await addNewPost(
-          selectedImages,
+          imagesToPost,
           finalCaption,
           filterClass,
           location,
@@ -182,6 +179,10 @@ export const CreatePostModal: React.FC = () => {
   };
 
   const handlePostClick = () => {
+    if (selectedImages.length === 0 && !caption.trim()) {
+      fileInputRef.current?.click();
+      return;
+    }
     if (shareAsStory && selectedImages.length > 1) {
       setIsStoryPromptOpen(true);
     } else {
@@ -328,45 +329,62 @@ export const CreatePostModal: React.FC = () => {
                 <span className="text-[11px] text-zinc-400">Slide carousel supported</span>
               </div>
 
-              <div className="flex items-center gap-3 overflow-x-auto py-2 px-1 no-scrollbar">
-                {/* Selected Image Thumbnails */}
-                {selectedImages.map((imgUrl, idx) => (
-                  <div 
-                    key={idx} 
-                    className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border border-white/15 flex-shrink-0 group shadow-md"
-                  >
-                    <img 
-                      src={imgUrl} 
-                      alt={`Media ${idx + 1}`} 
-                      className={`w-full h-full object-cover ${FILTER_OPTIONS.find(f => f.id === selectedFilter)?.className || ''}`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveImage(idx)}
-                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 hover:bg-rose-600 text-white flex items-center justify-center transition-colors shadow-md"
-                      title="Remove image"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                    {selectedImages.length > 1 && (
-                      <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded-full bg-black/60 text-white text-[9px] font-bold">
-                        {idx + 1}
-                      </span>
-                    )}
-                  </div>
-                ))}
-
-                {/* Adjacent Dashed + Add Photo Card (Mockup style) */}
-                <button
-                  type="button"
+              {selectedImages.length === 0 ? (
+                <div 
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-2 border-dashed border-white/20 hover:border-pink-500/60 flex flex-col items-center justify-center gap-1 text-zinc-400 hover:text-white transition-all bg-white/[0.02] hover:bg-white/[0.06] flex-shrink-0 cursor-pointer active:scale-95"
-                  title="Upload more photos"
+                  className="border-2 border-dashed border-white/20 hover:border-pink-500/60 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer bg-white/[0.02] hover:bg-white/[0.06] transition-all text-center group"
                 >
-                  <Plus className="w-5 h-5 text-pink-400" />
-                  <span className="text-[10px] font-bold">Add Photo</span>
-                </button>
-              </div>
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-cosmic p-[1.5px] shadow-lg shadow-pink-500/20 group-hover:scale-105 transition-transform flex items-center justify-center">
+                    <div className="w-full h-full bg-black rounded-[14px] flex items-center justify-center text-pink-400">
+                      <Upload className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white">Click or tap to upload photos</p>
+                    <p className="text-[10px] text-zinc-400 mt-0.5">Supports multi-photo slide carousel & collages</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 overflow-x-auto py-2 px-1 no-scrollbar">
+                  {/* Selected Image Thumbnails */}
+                  {selectedImages.map((imgUrl, idx) => (
+                    <div 
+                      key={idx} 
+                      className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border border-white/15 flex-shrink-0 group shadow-md"
+                    >
+                      <img 
+                        src={imgUrl} 
+                        alt={`Media ${idx + 1}`} 
+                        className={`w-full h-full object-cover ${FILTER_OPTIONS.find(f => f.id === selectedFilter)?.className || ''}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(idx)}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 hover:bg-rose-600 text-white flex items-center justify-center transition-colors shadow-md"
+                        title="Remove image"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                      {selectedImages.length > 1 && (
+                        <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded-full bg-black/60 text-white text-[9px] font-bold">
+                          {idx + 1}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Adjacent Dashed + Add Photo Card */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-2 border-dashed border-white/20 hover:border-pink-500/60 flex flex-col items-center justify-center gap-1 text-zinc-400 hover:text-white transition-all bg-white/[0.02] hover:bg-white/[0.06] flex-shrink-0 cursor-pointer active:scale-95"
+                    title="Upload more photos"
+                  >
+                    <Plus className="w-5 h-5 text-pink-400" />
+                    <span className="text-[10px] font-bold">Add Photo</span>
+                  </button>
+                </div>
+              )}
 
               {/* Quick Sample Selector if user wants instant aesthetic photos */}
               <div className="pt-1">
