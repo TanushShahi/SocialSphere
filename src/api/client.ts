@@ -1,6 +1,7 @@
 import { User, Post, Story, Reel, Conversation, NotificationItem } from '../types';
 
-const API_BASE = '/api';
+const SERVER_URL = ((import.meta as any).env?.VITE_API_URL as string) || '';
+const API_BASE = SERVER_URL ? `${SERVER_URL.replace(/\/$/, '')}/api` : '/api';
 
 export function getToken(): string | null {
   return localStorage.getItem('sphere_token');
@@ -30,14 +31,26 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    });
+  } catch (err: any) {
+    throw new Error(err?.message || 'Network connection failed');
+  }
 
-  const data = await res.json();
+  let data: any;
+  const contentType = res.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    data = await res.json();
+  } else {
+    data = { error: res.statusText || `Request failed (${res.status})` };
+  }
+
   if (!res.ok) {
-    throw new Error(data.error || 'An error occurred');
+    throw new Error(data.error || `HTTP ${res.status}`);
   }
 
   return data as T;

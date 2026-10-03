@@ -1,15 +1,17 @@
 import { io, Socket } from 'socket.io-client';
 
+const SERVER_URL = ((import.meta as any).env?.VITE_API_URL as string) || '/';
+
 let socket: Socket | null = null;
 
 export function getSocket(): Socket {
   if (!socket) {
-    socket = io('/', {
+    socket = io(SERVER_URL, {
       transports: ['websocket', 'polling'],
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
     });
 
     socket.on('connect', () => {
