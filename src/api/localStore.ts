@@ -1,10 +1,12 @@
-import { User, Post, Story, Reel, Conversation, NotificationItem, Comment } from '../types';
+import { User, Post, Story, Reel, Conversation, NotificationItem, Comment, FollowRelation, BlockRelation } from '../types';
 
 const USERS_KEY = 'sphere_local_users';
 const POSTS_KEY = 'sphere_local_posts';
 const STORIES_KEY = 'sphere_local_stories';
 const CONVERSATIONS_KEY = 'sphere_local_conversations';
 const CURRENT_USER_ID_KEY = 'sphere_current_user_id';
+const FOLLOWS_KEY = 'sphere_local_follows';
+const BLOCKS_KEY = 'sphere_local_blocks';
 
 interface StoredUser extends User {
   password?: string;
@@ -38,6 +40,35 @@ function setCurrentUserId(id: string | null): void {
   } else {
     localStorage.removeItem(CURRENT_USER_ID_KEY);
   }
+}
+
+function getFollows(): FollowRelation[] {
+  return getItem<FollowRelation[]>(FOLLOWS_KEY, []);
+}
+
+function setFollows(follows: FollowRelation[]): void {
+  setItem(FOLLOWS_KEY, follows);
+}
+
+function getBlocks(): BlockRelation[] {
+  return getItem<BlockRelation[]>(BLOCKS_KEY, []);
+}
+
+function setBlocks(blocks: BlockRelation[]): void {
+  setItem(BLOCKS_KEY, blocks);
+}
+
+function getBlockedIdsForUser(userId: string): Set<string> {
+  const blocks = getBlocks();
+  const blockedIds = new Set<string>();
+  for (const b of blocks) {
+    if (b.blockerId === userId) {
+      blockedIds.add(b.blockedId);
+    } else if (b.blockedId === userId) {
+      blockedIds.add(b.blockerId);
+    }
+  }
+  return blockedIds;
 }
 
 export const localStore = {
@@ -112,15 +143,43 @@ export const localStore = {
       const found = users.find(u => u.id === currentId);
       if (!found) throw new Error('User not found');
 
+      const follows = getFollows();
+      const followersCount = follows.filter(f => f.followingId === currentId).length;
+      const followingCount = follows.filter(f => f.followerId === currentId).length;
+
       const { password: _, email: __, ...userClean } = found;
-      return { user: userClean as User };
+      return { 
+        user: { 
+          ...userClean, 
+          followersCount, 
+          followingCount 
+        } as User 
+      };
     }
   },
 
   posts: {
     async getFeed(): Promise<{ posts: Post[] }> {
       const posts = getItem<Post[]>(POSTS_KEY, []);
-      return { posts };
+      const currentId = getCurrentUserId();
+      if (!currentId) return { posts };
+      const blocked = getBlockedIdsForUser(currentId);
+      const follows = getFollows();
+      const followingSet = new Set(
+        follows.filter(f => f.followerId === currentId).map(f => f.followingId)
+      );
+
+      const filtered = posts
+        .filter(p => !blocked.has(p.user.id))
+        .map(p => ({
+          ...p,
+          user: {
+            ...p.user,
+            isFollowing: followingSet.has(p.user.id)
+          }
+        }));
+
+      return { posts: filtered };
     },
 
     async create(
@@ -263,7 +322,10 @@ export const localStore = {
   stories: {
     async getAll(): Promise<{ stories: Story[] }> {
       const stories = getItem<Story[]>(STORIES_KEY, []);
-      return { stories };
+      const currentId = getCurrentUserId();
+      if (!currentId) return { stories };
+      const blocked = getBlockedIdsForUser(currentId);
+      return { stories: stories.filter(s => !blocked.has(s.user.id)) };
     },
 
     async create(
@@ -342,6 +404,15 @@ export const localStore = {
       const found = users.find(u => u.username.toLowerCase() === username.toLowerCase());
       if (!found) throw new Error('User not found');
 
+      const currentId = getCurrentUserId();
+      const follows = getFollows();
+      const isFollowing = currentId 
+        ? follows.some(f => f.followerId === currentId && f.followingId === found.id)
+        : false;
+
+      const followersCount = follows.filter(f => f.followingId === found.id).length;
+      const followingCount = follows.filter(f => f.followerId === found.id).length;
+
       const posts = getItem<Post[]>(POSTS_KEY, []).filter(p => p.user.id === found.id);
       const { password: _, email: __, ...cleanUser } = found;
 
@@ -349,7 +420,10 @@ export const localStore = {
         profile: {
           ...cleanUser,
           posts,
-          postsCount: posts.length
+          postsCount: posts.length,
+          followersCount,
+          followingCount,
+          isFollowing
         }
       };
     },
@@ -368,15 +442,178 @@ export const localStore = {
     },
 
     async follow(userId: string): Promise<{ isFollowing: boolean }> {
-      return { isFollowing: true };
+      const currentId = getCurrentUserId();
+      if (!currentId) throw new Error('Not authenticated');
+      if (currentId === userId) throw new Error('Cannot follow yourself');
+
+      const follows = getFollows();
+      const existingIdx = follows.findIndex(f => f.followerId === currentId && f.followingId === userId);
+      const users = getItem<StoredUser[]>(USERS_KEY, []);
+      const currentUserObj = users.find(u => u.id === currentId);
+      const targetUserObj = users.find(u => u.id === userId);
+
+      let isFollowing = false;
+
+      if (existingIdx !== -1) {
+        // Unfollow
+        follows.splice(existingIdx, 1);
+        isFollowing = false;
+        if (currentUserObj) {
+          currentUserObj.followingCount = Math.max(0, (currentUserObj.followingCount || 1) - 1);
+        }
+        if (targetUserObj) {
+          targetUserObj.followersCount = Math.max(0, (targetUserObj.followersCount || 1) - 1);
+        }
+      } else {
+        // Follow
+        follows.push({
+          followerId: currentId,
+          followingId: userId,
+          createdAt: new Date().toISOString()
+        });
+        isFollowing = true;
+        if (currentUserObj) {
+          currentUserObj.followingCount = (currentUserObj.followingCount || 0) + 1;
+        }
+        if (targetUserObj) {
+          targetUserObj.followersCount = (targetUserObj.followersCount || 0) + 1;
+        }
+      }
+
+      setFollows(follows);
+      setItem(USERS_KEY, users);
+
+      return { isFollowing };
+    },
+
+    async getFollowers(userId: string): Promise<{ users: User[] }> {
+      const users = getItem<StoredUser[]>(USERS_KEY, []);
+      const follows = getFollows();
+      const currentId = getCurrentUserId();
+      const blocked = currentId ? getBlockedIdsForUser(currentId) : new Set<string>();
+
+      const followerIds = new Set(
+        follows.filter(f => f.followingId === userId).map(f => f.followerId)
+      );
+
+      const myFollowingSet = currentId 
+        ? new Set(follows.filter(f => f.followerId === currentId).map(f => f.followingId))
+        : new Set<string>();
+
+      const result = users
+        .filter(u => followerIds.has(u.id) && !blocked.has(u.id))
+        .map(({ password: _, email: __, ...u }) => ({
+          ...u,
+          followersCount: follows.filter(f => f.followingId === u.id).length,
+          followingCount: follows.filter(f => f.followerId === u.id).length,
+          isFollowing: myFollowingSet.has(u.id)
+        } as User));
+
+      return { users: result };
+    },
+
+    async getFollowing(userId: string): Promise<{ users: User[] }> {
+      const users = getItem<StoredUser[]>(USERS_KEY, []);
+      const follows = getFollows();
+      const currentId = getCurrentUserId();
+      const blocked = currentId ? getBlockedIdsForUser(currentId) : new Set<string>();
+
+      const followingIds = new Set(
+        follows.filter(f => f.followerId === userId).map(f => f.followingId)
+      );
+
+      const myFollowingSet = currentId 
+        ? new Set(follows.filter(f => f.followerId === currentId).map(f => f.followingId))
+        : new Set<string>();
+
+      const result = users
+        .filter(u => followingIds.has(u.id) && !blocked.has(u.id))
+        .map(({ password: _, email: __, ...u }) => ({
+          ...u,
+          followersCount: follows.filter(f => f.followingId === u.id).length,
+          followingCount: follows.filter(f => f.followerId === u.id).length,
+          isFollowing: myFollowingSet.has(u.id)
+        } as User));
+
+      return { users: result };
+    },
+
+    async block(userId: string): Promise<{ isBlocked: boolean }> {
+      const currentId = getCurrentUserId();
+      if (!currentId) throw new Error('Not authenticated');
+      if (currentId === userId) throw new Error('Cannot block yourself');
+
+      const blocks = getBlocks();
+      const existingIdx = blocks.findIndex(b => b.blockerId === currentId && b.blockedId === userId);
+      let isBlocked = false;
+
+      if (existingIdx !== -1) {
+        // Unblock
+        blocks.splice(existingIdx, 1);
+        isBlocked = false;
+      } else {
+        // Block
+        blocks.push({
+          blockerId: currentId,
+          blockedId: userId,
+          createdAt: new Date().toISOString()
+        });
+        isBlocked = true;
+
+        // Mutual unfollow when blocked
+        let follows = getFollows();
+        const initialCount = follows.length;
+        follows = follows.filter(
+          f => !(
+            (f.followerId === currentId && f.followingId === userId) ||
+            (f.followerId === userId && f.followingId === currentId)
+          )
+        );
+        if (follows.length !== initialCount) {
+          setFollows(follows);
+          const users = getItem<StoredUser[]>(USERS_KEY, []);
+          for (const u of users) {
+            u.followersCount = follows.filter(f => f.followingId === u.id).length;
+            u.followingCount = follows.filter(f => f.followerId === u.id).length;
+          }
+          setItem(USERS_KEY, users);
+        }
+      }
+
+      setBlocks(blocks);
+      return { isBlocked };
+    },
+
+    async getBlockedUsers(): Promise<{ users: User[] }> {
+      const currentId = getCurrentUserId();
+      if (!currentId) return { users: [] };
+      const blocks = getBlocks().filter(b => b.blockerId === currentId);
+      const blockedIds = new Set(blocks.map(b => b.blockedId));
+      const users = getItem<StoredUser[]>(USERS_KEY, []);
+      const result = users
+        .filter(u => blockedIds.has(u.id))
+        .map(({ password: _, email: __, ...u }) => u as User);
+      return { users: result };
     },
 
     async suggested(): Promise<{ users: User[] }> {
       const users = getItem<StoredUser[]>(USERS_KEY, []);
       const currentId = getCurrentUserId();
+      const blocked = currentId ? getBlockedIdsForUser(currentId) : new Set<string>();
+      const follows = getFollows();
+      const myFollowingSet = currentId
+        ? new Set(follows.filter(f => f.followerId === currentId).map(f => f.followingId))
+        : new Set<string>();
+
       const clean = users
-        .filter(u => u.id !== currentId)
-        .map(({ password: _, email: __, ...u }) => u as User);
+        .filter(u => u.id !== currentId && !blocked.has(u.id))
+        .map(({ password: _, email: __, ...u }) => ({
+          ...u,
+          followersCount: follows.filter(f => f.followingId === u.id).length,
+          followingCount: follows.filter(f => f.followerId === u.id).length,
+          isFollowing: myFollowingSet.has(u.id)
+        } as User));
+
       return { users: clean };
     },
 
@@ -384,9 +621,22 @@ export const localStore = {
       const q = query.trim().toLowerCase();
       if (!q) return { users: [] };
       const users = getItem<StoredUser[]>(USERS_KEY, []);
+      const currentId = getCurrentUserId();
+      const blocked = currentId ? getBlockedIdsForUser(currentId) : new Set<string>();
+      const follows = getFollows();
+      const myFollowingSet = currentId
+        ? new Set(follows.filter(f => f.followerId === currentId).map(f => f.followingId))
+        : new Set<string>();
+
       const clean = users
-        .filter(u => u.username.toLowerCase().includes(q) || u.name.toLowerCase().includes(q))
-        .map(({ password: _, email: __, ...u }) => u as User);
+        .filter(u => (u.username.toLowerCase().includes(q) || u.name.toLowerCase().includes(q)) && !blocked.has(u.id))
+        .map(({ password: _, email: __, ...u }) => ({
+          ...u,
+          followersCount: follows.filter(f => f.followingId === u.id).length,
+          followingCount: follows.filter(f => f.followerId === u.id).length,
+          isFollowing: myFollowingSet.has(u.id)
+        } as User));
+
       return { users: clean };
     }
   },
@@ -394,7 +644,10 @@ export const localStore = {
   messages: {
     async getConversations(): Promise<{ conversations: Conversation[] }> {
       const convs = getItem<Conversation[]>(CONVERSATIONS_KEY, []);
-      return { conversations: convs };
+      const currentId = getCurrentUserId();
+      if (!currentId) return { conversations: convs };
+      const blocked = getBlockedIdsForUser(currentId);
+      return { conversations: convs.filter(c => !blocked.has(c.participant.id)) };
     },
 
     async getOrCreateConversation(recipientId: string): Promise<{ conversation: Conversation }> {

@@ -299,6 +299,33 @@ export const api = {
         () => localStore.users.follow(userId)
       ),
 
+    getFollowers: (userId: string) =>
+      execute(
+        () => request<{ users: User[] }>(`/users/${userId}/followers`),
+        () => localStore.users.getFollowers(userId)
+      ),
+
+    getFollowing: (userId: string) =>
+      execute(
+        () => request<{ users: User[] }>(`/users/${userId}/following`),
+        () => localStore.users.getFollowing(userId)
+      ),
+
+    block: (userId: string) =>
+      execute(
+        () =>
+          request<{ isBlocked: boolean }>(`/users/${userId}/block`, {
+            method: 'POST',
+          }),
+        () => localStore.users.block(userId)
+      ),
+
+    getBlockedUsers: () =>
+      execute(
+        () => request<{ users: User[] }>('/users/blocked'),
+        () => localStore.users.getBlockedUsers()
+      ),
+
     suggested: () =>
       execute(
         () => request<{ users: User[] }>('/users/suggested'),

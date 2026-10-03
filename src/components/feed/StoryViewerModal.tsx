@@ -170,13 +170,13 @@ export const StoryViewerModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-2xl flex items-center justify-center p-0 sm:p-4 select-none animate-fade-in">
-      {/* Close button */}
+      {/* Desktop Outer Close button */}
       <button 
         onClick={closeStoryViewer}
-        className="absolute top-4 right-4 z-50 p-2 text-white/80 hover:text-white bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full transition-all"
+        className="hidden sm:flex absolute top-6 right-6 z-50 p-2.5 text-white/80 hover:text-white bg-black/60 hover:bg-black/80 backdrop-blur-md rounded-full transition-all border border-white/10"
         aria-label="Close stories"
       >
-        <X className="w-6 h-6" />
+        <X className="w-5 h-5" />
       </button>
 
       {/* Main Story Container with Celestial Glass Frame */}
@@ -310,6 +310,20 @@ export const StoryViewerModal: React.FC = () => {
                   <Trash2 className="w-4 h-4" />
                 </button>
               )}
+
+              {/* Close Button in Header */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  closeStoryViewer();
+                }}
+                className="p-1.5 text-white/90 hover:text-white bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors"
+                title="Close"
+                aria-label="Close story"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>

@@ -13,7 +13,8 @@ import {
   Edit3,
   Trash2,
   Share2,
-  Check
+  Check,
+  ShieldAlert
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { EditPostModal } from '../post/EditPostModal';
@@ -28,6 +29,7 @@ export const PostDetailModal: React.FC = () => {
     addComment, 
     toggleLikeComment,
     toggleFollowUser,
+    toggleBlockUser,
     deletePost,
     currentUser,
     openShareModal
@@ -384,6 +386,21 @@ export const PostDetailModal: React.FC = () => {
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Delete Post</span>
+              </button>
+            )}
+
+            {/* If Not Owner: Block User */}
+            {!isOwner && currentUser && (
+              <button
+                onClick={async () => {
+                  setShowOptions(false);
+                  closePostDetail();
+                  await toggleBlockUser(post.user.id);
+                }}
+                className="w-full py-3.5 px-4 font-bold text-rose-400 hover:bg-rose-500/10 transition-colors flex items-center justify-center gap-2"
+              >
+                <ShieldAlert className="w-4 h-4 text-rose-400" />
+                <span>Block @{post.user.username}</span>
               </button>
             )}
 

@@ -17,9 +17,12 @@ import {
   Upload,
   Trash2,
   Check,
-  Share2
+  Share2,
+  ShieldAlert
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { FollowListModal } from './FollowListModal';
+import { BlockedAccountsModal } from './BlockedAccountsModal';
 
 const COSMIC_AVATARS = [
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
@@ -49,6 +52,9 @@ export const ProfileView: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAvatarSheetOpen, setIsAvatarSheetOpen] = useState(false);
   const [isPresetModalOpen, setIsPresetModalOpen] = useState(false);
+  const [isFollowModalOpen, setIsFollowModalOpen] = useState(false);
+  const [followModalInitialTab, setFollowModalInitialTab] = useState<'followers' | 'following'>('followers');
+  const [isBlockedModalOpen, setIsBlockedModalOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -218,6 +224,14 @@ export const ProfileView: React.FC = () => {
                   Share profile
                 </button>
                 <button
+                  onClick={() => setIsBlockedModalOpen(true)}
+                  className="px-3 py-1.5 bg-white/10 hover:bg-white/15 text-xs font-semibold rounded-xl border border-white/10 transition-colors flex items-center gap-1.5 text-zinc-300 hover:text-white"
+                  title="Blocked Accounts"
+                >
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+                  <span className="hidden sm:inline">Blocked</span>
+                </button>
+                <button
                   onClick={logout}
                   className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold rounded-xl border border-rose-500/20 transition-colors flex items-center gap-1"
                   title="Log Out"
@@ -229,19 +243,39 @@ export const ProfileView: React.FC = () => {
             </div>
 
             {/* Middle Row: Glass Metrics Counters */}
-            <div className="flex items-center justify-center sm:justify-start gap-6 text-sm">
+            <div className="flex items-center justify-center sm:justify-start gap-4 sm:gap-6 text-sm">
               <div className="px-4 py-2 rounded-2xl bg-white/5 border border-white/5 text-center">
                 <span className="font-extrabold text-white mr-1.5">{userPosts.length}</span>
                 <span className="text-zinc-400 text-xs font-medium">posts</span>
               </div>
-              <div className="px-4 py-2 rounded-2xl bg-white/5 border border-white/5 text-center">
-                <span className="font-extrabold text-white mr-1.5">{currentUser.followersCount.toLocaleString()}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setFollowModalInitialTab('followers');
+                  setIsFollowModalOpen(true);
+                }}
+                className="px-4 py-2 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-95 border border-white/5 hover:border-white/15 text-center transition-all cursor-pointer group"
+                title="View followers"
+              >
+                <span className="font-extrabold text-white mr-1.5 group-hover:text-pink-400 transition-colors">
+                  {currentUser.followersCount.toLocaleString()}
+                </span>
                 <span className="text-zinc-400 text-xs font-medium">followers</span>
-              </div>
-              <div className="px-4 py-2 rounded-2xl bg-white/5 border border-white/5 text-center">
-                <span className="font-extrabold text-white mr-1.5">{currentUser.followingCount.toLocaleString()}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFollowModalInitialTab('following');
+                  setIsFollowModalOpen(true);
+                }}
+                className="px-4 py-2 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-95 border border-white/5 hover:border-white/15 text-center transition-all cursor-pointer group"
+                title="View following"
+              >
+                <span className="font-extrabold text-white mr-1.5 group-hover:text-pink-400 transition-colors">
+                  {currentUser.followingCount.toLocaleString()}
+                </span>
                 <span className="text-zinc-400 text-xs font-medium">following</span>
-              </div>
+              </button>
             </div>
 
             {/* Bottom Row: Name, Bio & Link */}
@@ -619,6 +653,20 @@ export const ProfileView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Followers & Following Modal */}
+      <FollowListModal
+        isOpen={isFollowModalOpen}
+        onClose={() => setIsFollowModalOpen(false)}
+        initialTab={followModalInitialTab}
+        targetUser={currentUser}
+      />
+
+      {/* Blocked Accounts Modal */}
+      <BlockedAccountsModal
+        isOpen={isBlockedModalOpen}
+        onClose={() => setIsBlockedModalOpen(false)}
+      />
     </div>
   );
 };

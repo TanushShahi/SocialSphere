@@ -17,7 +17,8 @@ import {
   Edit3,
   Trash2,
   Share2,
-  Disc
+  Disc,
+  ShieldAlert
 } from 'lucide-react';
 import { Post } from '../../types';
 import { useApp } from '../../context/AppContext';
@@ -36,6 +37,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
     addComment, 
     openPostDetail, 
     toggleFollowUser,
+    toggleBlockUser,
     deletePost,
     currentUser,
     openShareModal
@@ -478,6 +480,20 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Delete Post</span>
+              </button>
+            )}
+
+            {/* If Not Owner: Block User */}
+            {!isOwner && currentUser && (
+              <button
+                onClick={async () => {
+                  setShowOptionsMenu(false);
+                  await toggleBlockUser(post.user.id);
+                }}
+                className="w-full py-3.5 px-4 font-bold text-rose-400 hover:bg-rose-500/10 transition-colors flex items-center justify-center gap-2"
+              >
+                <ShieldAlert className="w-4 h-4 text-rose-400" />
+                <span>Block @{post.user.username}</span>
               </button>
             )}
 

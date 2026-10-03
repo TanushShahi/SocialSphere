@@ -10,6 +10,19 @@ export interface User {
   postsCount: number;
   isVerified?: boolean;
   isFollowing?: boolean;
+  blockedUserIds?: string[];
+}
+
+export interface FollowRelation {
+  followerId: string;
+  followingId: string;
+  createdAt: string;
+}
+
+export interface BlockRelation {
+  blockerId: string;
+  blockedId: string;
+  createdAt: string;
 }
 
 export interface Comment {

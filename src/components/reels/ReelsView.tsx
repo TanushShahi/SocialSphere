@@ -150,6 +150,7 @@ const SingleReelCard: React.FC<ReelCardProps> = ({
   };
 
   const isOwner = currentUser && reel.user.id === currentUser.id;
+  const isInstagramReel = reel.id.startsWith('reel_ig') || reel.user.id.startsWith('ig_creator');
 
   return (
     <div className="relative h-[calc(100vh-70px)] md:h-[calc(100vh-24px)] w-full max-w-[420px] mx-auto snap-start bg-black rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl border border-zinc-800/80 flex items-center justify-center group select-none">
@@ -310,7 +311,7 @@ const SingleReelCard: React.FC<ReelCardProps> = ({
             )}
           </div>
 
-          {!isOwner && (
+          {!isOwner && !isInstagramReel && (
             <button
               onClick={() => toggleFollowUser(reel.user.id)}
               className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ml-1 ${

@@ -13,7 +13,8 @@ import {
   X,
   UserPlus,
   Radio,
-  Sparkles
+  Sparkles,
+  ShieldAlert
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
@@ -27,7 +28,8 @@ export const MessagesView: React.FC = () => {
     sendMessage, 
     initiateCall, 
     onlineUserIds, 
-    startConversationWithUser 
+    startConversationWithUser,
+    toggleBlockUser
   } = useApp();
   
   const [selectedConvId, setSelectedConvId] = useState<string>(() => {
@@ -304,6 +306,19 @@ export const MessagesView: React.FC = () => {
                   title="Spatial Video Call"
                 >
                   <Video className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={async () => {
+                    if (window.confirm(`Block @${activeConv.participant.username}? They won't be able to message you or see your transmissions.`)) {
+                      await toggleBlockUser(activeConv.participant.id);
+                      setSelectedConvId('');
+                    }
+                  }}
+                  className="p-2 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-full transition-colors"
+                  title={`Block @${activeConv.participant.username}`}
+                >
+                  <ShieldAlert className="w-4 h-4" />
                 </button>
               </div>
             </div>

@@ -91,7 +91,11 @@ interface AppContextType {
   onlineUserIds: string[];
   markNotificationAsRead: (notifId: string) => Promise<void>;
   markAllNotificationsAsRead: () => Promise<void>;
-  toggleFollowUser: (userId: string) => Promise<void>;
+  toggleFollowUser: (userId: string) => Promise<boolean>;
+  toggleBlockUser: (userId: string) => Promise<boolean>;
+  getFollowers: (userId: string) => Promise<User[]>;
+  getFollowing: (userId: string) => Promise<User[]>;
+  getBlockedUsers: () => Promise<User[]>;
   unreadNotificationsCount: number;
   unreadMessagesCount: number;
   refreshData: () => Promise<void>;
@@ -656,8 +660,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Follow user
-  const toggleFollowUser = async (userId: string) => {
+  // Follow / Unfollow user toggle
+  const toggleFollowUser = async (userId: string): Promise<boolean> => {
     try {
       const res = await api.users.follow(userId);
       setPosts(prev =>
@@ -665,14 +669,66 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           p.user.id === userId ? { ...p, user: { ...p.user, isFollowing: res.isFollowing } } : p
         )
       );
+      setReels(prev =>
+        prev.map(r =>
+          r.user.id === userId ? { ...r, user: { ...r.user, isFollowing: res.isFollowing } } : r
+        )
+      );
       if (currentUser) {
-        setCurrentUser({
-          ...currentUser,
-          followingCount: res.isFollowing ? currentUser.followingCount + 1 : currentUser.followingCount - 1
-        });
+        setCurrentUser(prev => prev ? {
+          ...prev,
+          followingCount: res.isFollowing ? prev.followingCount + 1 : Math.max(0, prev.followingCount - 1)
+        } : null);
       }
+      return res.isFollowing;
     } catch (err) {
-      console.error(err);
+      console.error('Follow toggle error:', err);
+      return false;
+    }
+  };
+
+  // Block / Unblock user toggle
+  const toggleBlockUser = async (userId: string): Promise<boolean> => {
+    try {
+      const res = await api.users.block(userId);
+      await refreshData();
+      return res.isBlocked;
+    } catch (err) {
+      console.error('Block toggle error:', err);
+      return false;
+    }
+  };
+
+  // Get Followers list
+  const getFollowers = async (userId: string): Promise<User[]> => {
+    try {
+      const res = await api.users.getFollowers(userId);
+      return res.users || [];
+    } catch (err) {
+      console.error('getFollowers error:', err);
+      return [];
+    }
+  };
+
+  // Get Following list
+  const getFollowing = async (userId: string): Promise<User[]> => {
+    try {
+      const res = await api.users.getFollowing(userId);
+      return res.users || [];
+    } catch (err) {
+      console.error('getFollowing error:', err);
+      return [];
+    }
+  };
+
+  // Get Blocked users list
+  const getBlockedUsers = async (): Promise<User[]> => {
+    try {
+      const res = await api.users.getBlockedUsers();
+      return res.users || [];
+    } catch (err) {
+      console.error('getBlockedUsers error:', err);
+      return [];
     }
   };
 
@@ -735,6 +791,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markNotificationAsRead,
         markAllNotificationsAsRead,
         toggleFollowUser,
+        toggleBlockUser,
+        getFollowers,
+        getFollowing,
+        getBlockedUsers,
         unreadNotificationsCount,
         unreadMessagesCount,
         refreshData,
