@@ -8,7 +8,8 @@ import {
   Conversation, 
   TabType,
   CallSession,
-  CallType
+  CallType,
+  ShareItem
 } from '../types';
 import { api, getToken, setToken } from '../api/client';
 import { getSocket, registerSocketUser } from '../services/socket';
@@ -78,8 +79,11 @@ interface AppContextType {
   deleteStory: (storyId: string) => Promise<void>;
   toggleLikeReel: (reelId: string) => Promise<void>;
   toggleSaveReel: (reelId: string) => Promise<void>;
-  sendMessage: (conversationId: string, text: string) => Promise<void>;
+  sendMessage: (conversationId: string, text: string, mediaUrl?: string) => Promise<void>;
   startConversationWithUser: (recipient: User) => Promise<string>;
+  shareItem: ShareItem | null;
+  openShareModal: (item: ShareItem) => void;
+  closeShareModal: () => void;
   callSession: CallSession | null;
   initiateCall: (partner: { id: string; username: string; name: string; avatar: string }, callType: CallType) => void;
   acceptIncomingCall: () => void;
@@ -137,6 +141,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+  const [shareItem, setShareItem] = useState<ShareItem | null>(null);
+  const openShareModal = (item: ShareItem) => setShareItem(item);
+  const closeShareModal = () => setShareItem(null);
 
   // Calling & Real-Time Presence
   const [callSession, setCallSession] = useState<CallSession | null>(null);
@@ -304,6 +311,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateCurrentUser = async (updates: Partial<User>) => {
     const res = await api.users.updateProfile(updates);
     setCurrentUser(res.user);
+    setPosts(prev => prev.map(p => p.user.id === res.user.id ? { ...p, user: { ...p.user, ...res.user } } : p));
+    setStories(prev => prev.map(s => s.user.id === res.user.id ? { ...s, user: { ...s.user, ...res.user } } : s));
   };
 
   const openStoryViewer = (index: number) => {
@@ -526,19 +535,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Live Messages via Socket.IO
-  const sendMessage = async (conversationId: string, text: string) => {
+  // Live Messages via Socket.IO & API
+  const sendMessage = async (conversationId: string, text: string, mediaUrl?: string) => {
     try {
-      if (!currentUser || !text.trim()) return;
+      if (!currentUser || (!text.trim() && !mediaUrl)) return;
       const conv = conversations.find(c => c.id === conversationId);
       if (!conv) return;
+
+      const res = await api.messages.sendMessage(conversationId, text.trim(), mediaUrl);
+      if (res && res.message) {
+        setConversations(prev =>
+          prev.map(c => {
+            if (c.id === conversationId) {
+              const alreadyHas = c.messages.some(m => m.id === res.message.id);
+              if (alreadyHas) return c;
+              return {
+                ...c,
+                messages: [...c.messages, res.message]
+              };
+            }
+            return c;
+          })
+        );
+      }
 
       const s = getSocket();
       s.emit('send-message', {
         conversationId,
         senderId: currentUser.id,
         receiverId: conv.participant.id,
-        text: text.trim()
+        text: text.trim(),
+        mediaUrl
       });
     } catch (err) {
       console.error('sendMessage error:', err);
@@ -697,6 +724,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleSaveReel,
         sendMessage,
         startConversationWithUser,
+        shareItem,
+        openShareModal,
+        closeShareModal,
         callSession,
         initiateCall,
         acceptIncomingCall,

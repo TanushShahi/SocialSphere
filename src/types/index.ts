@@ -148,3 +148,13 @@ export type FilterType =
   | 'noir'
   | 'warm'
   | 'cyber';
+
+export interface ShareItem {
+  id: string;
+  type: 'post' | 'reel';
+  title: string;
+  caption?: string;
+  mediaUrl: string;
+  author: { id: string; username: string; name?: string; avatar: string };
+}
+

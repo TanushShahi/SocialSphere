@@ -15,12 +15,28 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { DoubleTapHeart } from '../common/DoubleTapHeart';
+import { TRENDING_INSTAGRAM_REELS } from './trendingReels';
 
 export const ReelsView: React.FC = () => {
-  const { reels, toggleLikeReel, toggleSaveReel, toggleFollowUser, currentUser, setIsCreatePostOpen } = useApp();
+  const { 
+    reels, 
+    toggleLikeReel, 
+    toggleSaveReel, 
+    toggleFollowUser, 
+    currentUser, 
+    setIsCreatePostOpen,
+    openShareModal
+  } = useApp();
+
+  const combinedReels = React.useMemo(() => {
+    const existingIds = new Set(reels.map(r => r.id));
+    const trendingFiltered = TRENDING_INSTAGRAM_REELS.filter(tr => !existingIds.has(tr.id));
+    return [...reels, ...trendingFiltered];
+  }, [reels]);
+
   const [isMuted, setIsMuted] = useState(true);
   const [playingMap, setPlayingMap] = useState<Record<string, boolean>>({
-    [reels[0]?.id]: true
+    [combinedReels[0]?.id]: true
   });
   const [showHeartMap, setShowHeartMap] = useState<Record<string, boolean>>({});
   const lastTapRef = useRef<number>(0);
@@ -51,7 +67,7 @@ export const ReelsView: React.FC = () => {
     }
   };
 
-  if (reels.length === 0) {
+  if (combinedReels.length === 0) {
     return (
       <div className="max-w-md mx-auto min-h-[calc(100vh-120px)] flex items-center justify-center p-4">
         <div className="w-full aerogel-card rounded-3xl p-8 text-center space-y-4 shadow-2xl border border-white/10 animate-fade-in">
@@ -78,7 +94,7 @@ export const ReelsView: React.FC = () => {
 
   return (
     <div className="max-w-md mx-auto h-[calc(100vh-60px)] md:h-screen overflow-y-scroll snap-y snap-mandatory no-scrollbar select-none py-2 animate-fade-in">
-      {reels.map((reel) => {
+      {combinedReels.map((reel) => {
         const isPlaying = playingMap[reel.id] ?? false;
         const showHeart = showHeartMap[reel.id] ?? false;
 
@@ -154,9 +170,23 @@ export const ReelsView: React.FC = () => {
               {/* Share */}
               <div className="flex flex-col items-center">
                 <button 
-                  onClick={() => navigator.clipboard?.writeText(window.location.href)}
+                  onClick={() => {
+                    openShareModal({
+                      id: reel.id,
+                      type: 'reel',
+                      title: `Reel by @${reel.user.username}`,
+                      caption: reel.caption,
+                      mediaUrl: reel.videoUrl,
+                      author: {
+                        id: reel.user.id,
+                        username: reel.user.username,
+                        name: reel.user.name,
+                        avatar: reel.user.avatar
+                      }
+                    });
+                  }}
                   className="p-2 rounded-full hover:bg-black/30 transition-transform active:scale-75"
-                  title="Share"
+                  title="Share Reel"
                 >
                   <Send className="w-6 h-6 stroke-[2] drop-shadow-md" />
                 </button>
@@ -201,6 +231,11 @@ export const ReelsView: React.FC = () => {
                   className="w-9 h-9 rounded-full object-cover border border-white/40"
                 />
                 <span className="font-semibold text-sm">{reel.user.username}</span>
+                {reel.id.startsWith('reel_ig') && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/80 via-pink-500/80 to-purple-600/80 text-white flex items-center gap-1 shadow-sm">
+                    <span>📸</span> Instagram Reel
+                  </span>
+                )}
 
                 {currentUser && reel.user.id !== currentUser.id && (
                   <button

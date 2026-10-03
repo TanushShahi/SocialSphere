@@ -16,6 +16,7 @@ import { StoryViewerModal } from './components/feed/StoryViewerModal';
 import { PostDetailModal } from './components/feed/PostDetailModal';
 import { CallModal } from './components/calling/CallModal';
 import { InstallAppModal } from './components/navigation/InstallAppModal';
+import { ShareSheetModal } from './components/common/ShareSheetModal';
 
 const AppContent: React.FC = () => {
   const { 
@@ -62,6 +63,7 @@ const AppContent: React.FC = () => {
       <PostDetailModal />
       <CallModal session={callSession} onEndCall={endCall} onAcceptCall={acceptIncomingCall} />
       <InstallAppModal isOpen={isInstallModalOpen} onClose={() => setIsInstallModalOpen(false)} />
+      <ShareSheetModal />
     </div>
   );
 };

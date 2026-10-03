@@ -29,7 +29,8 @@ export const PostDetailModal: React.FC = () => {
     toggleLikeComment,
     toggleFollowUser,
     deletePost,
-    currentUser 
+    currentUser,
+    openShareModal
   } = useApp();
 
   const [commentText, setCommentText] = useState('');
@@ -83,6 +84,22 @@ export const PostDetailModal: React.FC = () => {
       setCopiedLink(false);
       setShowOptions(false);
     }, 1200);
+  };
+
+  const handleOpenShare = () => {
+    openShareModal({
+      id: post.id,
+      type: 'post',
+      title: `Post by @${post.user.username}`,
+      caption: post.caption,
+      mediaUrl: (post.media[currentMediaIdx] || post.media[0])?.url || '',
+      author: {
+        id: post.user.id,
+        username: post.user.username,
+        name: post.user.name,
+        avatar: post.user.avatar
+      }
+    });
   };
 
   const isOwner = currentUser && post.user.id === currentUser.id;
@@ -288,8 +305,9 @@ export const PostDetailModal: React.FC = () => {
                   <MessageCircle className="w-6 h-6 stroke-[1.8]" />
                 </button>
                 <button 
-                  onClick={handleCopyLink}
-                  className="text-zinc-300 hover:text-white"
+                  onClick={handleOpenShare}
+                  className="text-zinc-300 hover:text-white active:scale-75 transition-transform"
+                  title="Share post"
                 >
                   <Send className="w-6 h-6 stroke-[1.8]" />
                 </button>
@@ -368,6 +386,17 @@ export const PostDetailModal: React.FC = () => {
                 <span>Delete Post</span>
               </button>
             )}
+
+            <button
+              onClick={() => {
+                setShowOptions(false);
+                handleOpenShare();
+              }}
+              className="w-full py-3.5 px-4 font-semibold text-pink-400 hover:bg-white/5 transition-colors flex items-center justify-center gap-2"
+            >
+              <Send className="w-4 h-4" />
+              <span>Share to...</span>
+            </button>
 
             <button
               onClick={handleCopyLink}

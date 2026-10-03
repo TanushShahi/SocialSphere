@@ -24,6 +24,21 @@ const GENRES = [
   { id: 'Lo-Fi', label: 'Lo-Fi & Chill', icon: '🎧' },
 ];
 
+const POPULAR_ARTISTS = [
+  { name: 'Arijit Singh', flag: '🇮🇳' },
+  { name: 'Diljit Dosanjh', flag: '🌾' },
+  { name: 'AP Dhillon', flag: '🔥' },
+  { name: 'Sidhu Moosewala', flag: '👑' },
+  { name: 'Shreya Ghoshal', flag: '🎤' },
+  { name: 'Atif Aslam', flag: '✨' },
+  { name: 'Anirudh', flag: '⚡' },
+  { name: 'Taylor Swift', flag: '⭐' },
+  { name: 'The Weeknd', flag: '🌙' },
+  { name: 'Drake', flag: '🦉' },
+  { name: 'Bad Bunny', flag: '🐰' },
+  { name: 'BTS', flag: '💜' },
+];
+
 export const MusicPickerModal: React.FC<MusicPickerModalProps> = ({
   isOpen,
   onClose,
@@ -228,6 +243,25 @@ export const MusicPickerModal: React.FC<MusicPickerModalProps> = ({
                 </button>
               );
             })}
+          </div>
+
+          {/* Popular Artists Search Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 pb-1">
+            <span className="text-[10px] uppercase font-bold text-zinc-500 whitespace-nowrap mr-1">Trending:</span>
+            {POPULAR_ARTISTS.map((artist) => (
+              <button
+                key={artist.name}
+                onClick={() => setSearchQuery(artist.name)}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold flex items-center gap-1 whitespace-nowrap transition-all ${
+                  searchQuery.toLowerCase() === artist.name.toLowerCase()
+                    ? 'bg-pink-500 text-white shadow-md'
+                    : 'bg-white/[0.04] text-zinc-300 hover:text-white hover:bg-white/10 border border-white/5'
+                }`}
+              >
+                <span>{artist.flag}</span>
+                <span>{artist.name}</span>
+              </button>
+            ))}
           </div>
         </div>
 
