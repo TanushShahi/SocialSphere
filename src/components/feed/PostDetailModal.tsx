@@ -19,6 +19,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { EditPostModal } from '../post/EditPostModal';
 import { DeleteConfirmModal } from '../post/DeleteConfirmModal';
+import { formatTimeAgo } from '../../utils/timeAgo';
 
 export const PostDetailModal: React.FC = () => {
   const { 
@@ -46,6 +47,26 @@ export const PostDetailModal: React.FC = () => {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const touchStartX = useRef(0);
+  const touchDeltaX = useRef(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchDeltaX.current = 0;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchDeltaX.current = e.touches[0].clientX - touchStartX.current;
+  };
+
+  const handleTouchEnd = () => {
+    if (touchDeltaX.current > 40 && currentMediaIdx > 0) {
+      setCurrentMediaIdx(prev => prev - 1);
+    } else if (touchDeltaX.current < -40 && currentMediaIdx < (post?.media.length || 0) - 1) {
+      setCurrentMediaIdx(prev => prev + 1);
+    }
+    touchDeltaX.current = 0;
+  };
 
   if (!post) return null;
 
@@ -124,19 +145,42 @@ export const PostDetailModal: React.FC = () => {
         onClick={(e) => e.stopPropagation()}
         className="relative bg-zinc-950/90 border border-white/10 w-full max-w-4xl h-[90vh] max-h-[750px] rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row"
       >
-        {/* Left Column: Media Presentation */}
-        <div className="flex-1 bg-black relative flex items-center justify-center overflow-hidden">
-          <img 
-            src={post.media[currentMediaIdx]?.url || post.media[0]?.url} 
-            alt="Post focus" 
-            className={`w-full h-full object-contain ${post.media[currentMediaIdx]?.filter || ''}`}
-          />
+        {/* Left Column: Media Presentation with Sliding Track */}
+        <div 
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          className="flex-1 bg-black relative flex items-center justify-center overflow-hidden"
+        >
+          <div 
+            className="flex w-full h-full transition-transform duration-300 ease-out"
+            style={{ transform: `translateX(-${currentMediaIdx * 100}%)` }}
+          >
+            {post.media.map((med, idx) => (
+              <div key={med.id || idx} className="w-full h-full flex-shrink-0 flex items-center justify-center relative bg-black">
+                <img 
+                  src={med.url} 
+                  alt={`Post focus ${idx + 1}`} 
+                  className={`w-full h-full object-contain ${med.filter || ''}`}
+                  draggable={false}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Instagram 1/N Badge */}
+          {post.media.length > 1 && (
+            <div className="absolute top-4 right-4 z-20 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-semibold tracking-wider shadow-md pointer-events-none">
+              {currentMediaIdx + 1}/{post.media.length}
+            </div>
+          )}
 
           {/* Carousel Arrows */}
           {post.media.length > 1 && (
             <>
               {currentMediaIdx > 0 && (
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     setCurrentMediaIdx(prev => prev - 1);
@@ -149,6 +193,7 @@ export const PostDetailModal: React.FC = () => {
 
               {currentMediaIdx < post.media.length - 1 && (
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     setCurrentMediaIdx(prev => prev + 1);
@@ -160,12 +205,12 @@ export const PostDetailModal: React.FC = () => {
               )}
 
               {/* Indicator dots */}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-black/50 px-2.5 py-1 rounded-full backdrop-blur-md">
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-black/50 px-2.5 py-1 rounded-full backdrop-blur-md pointer-events-none">
                 {post.media.map((_, i) => (
                   <div 
                     key={i}
-                    className={`w-1.5 h-1.5 rounded-full transition-all ${
-                      i === currentMediaIdx ? 'bg-pink-500 scale-125' : 'bg-white/40'
+                    className={`rounded-full transition-all duration-300 ${
+                      i === currentMediaIdx ? 'w-2 h-2 bg-pink-500 scale-110 shadow-sm shadow-pink-500/50' : 'w-1.5 h-1.5 bg-white/40'
                     }`}
                   />
                 ))}
@@ -245,7 +290,7 @@ export const PostDetailModal: React.FC = () => {
                   </span>
                   {post.caption}
                 </p>
-                <span className="text-[10px] text-zinc-500 mt-1 block">{post.createdAt}</span>
+                <span className="text-[10px] text-zinc-500 mt-1 block">{formatTimeAgo(post.createdAt)}</span>
               </div>
             </div>
 
@@ -266,7 +311,7 @@ export const PostDetailModal: React.FC = () => {
                       {comm.text}
                     </p>
                     <div className="flex items-center gap-3 mt-1 text-[10px] text-zinc-500 font-medium">
-                      <span>{comm.createdAt}</span>
+                      <span>{formatTimeAgo(comm.createdAt)}</span>
                       {comm.likesCount > 0 && <span>{comm.likesCount} likes</span>}
                     </div>
                   </div>

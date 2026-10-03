@@ -25,6 +25,7 @@ import { useApp } from '../../context/AppContext';
 import { DoubleTapHeart } from '../common/DoubleTapHeart';
 import { EditPostModal } from '../post/EditPostModal';
 import { DeleteConfirmModal } from '../post/DeleteConfirmModal';
+import { formatTimeAgo } from '../../utils/timeAgo';
 
 interface PostCardProps {
   post: Post;
@@ -85,6 +86,27 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
       audioPlayerRef.current.play().catch(() => {});
       setIsPlayingAudio(true);
     }
+  };
+
+  const touchStartX = useRef(0);
+  const touchDeltaX = useRef(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchDeltaX.current = 0;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchDeltaX.current = e.touches[0].clientX - touchStartX.current;
+  };
+
+  const handleTouchEnd = () => {
+    if (touchDeltaX.current > 40 && currentMediaIdx > 0) {
+      setCurrentMediaIdx(prev => prev - 1);
+    } else if (touchDeltaX.current < -40 && currentMediaIdx < post.media.length - 1) {
+      setCurrentMediaIdx(prev => prev + 1);
+    }
+    touchDeltaX.current = 0;
   };
 
   const handleMediaClick = () => {
@@ -181,7 +203,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 <span className="text-xs font-bold hover:underline cursor-pointer text-white">
                   {post.user.username}
                 </span>
-                <span className="text-[10px] text-zinc-500">• {post.createdAt}</span>
+                <span className="text-[10px] text-zinc-500">• {formatTimeAgo(post.createdAt)}</span>
 
                 {!isOwner && currentUser && (
                   <button
@@ -239,16 +261,37 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
           </button>
         </div>
 
-        {/* 2. Media Canvas with Holographic Vinyl Disc & Double Tap */}
+        {/* 2. Media Canvas with Sliding Carousel, Holographic Vinyl Disc & Double Tap */}
         <div 
           onClick={handleMediaClick}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
           className="relative w-full aspect-square rounded-2xl overflow-hidden select-none cursor-pointer group/media border border-white/5 bg-zinc-950"
         >
-          <img 
-            src={currentMedia?.url || ''} 
-            alt="Post content" 
-            className={`w-full h-full object-cover transition-transform duration-500 group-hover/media:scale-[1.01] ${currentMedia?.filter || ''}`}
-          />
+          {/* Sliding Track for Multi-Photo Posts */}
+          <div 
+            className="flex w-full h-full transition-transform duration-300 ease-out"
+            style={{ transform: `translateX(-${currentMediaIdx * 100}%)` }}
+          >
+            {post.media.map((med, idx) => (
+              <div key={med.id || idx} className="w-full h-full flex-shrink-0 relative">
+                <img 
+                  src={med.url} 
+                  alt={`Post content ${idx + 1}`} 
+                  className={`w-full h-full object-cover ${med.filter || ''}`}
+                  draggable={false}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Instagram 1/N Badge */}
+          {post.media.length > 1 && (
+            <div className="absolute top-3 right-3 z-20 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-semibold tracking-wider shadow-md pointer-events-none">
+              {currentMediaIdx + 1}/{post.media.length}
+            </div>
+          )}
 
           {/* Floating Spinning Holographic Vinyl Disc if post has song */}
           {post.songTitle && (
@@ -290,6 +333,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
             <>
               {currentMediaIdx > 0 && (
                 <button
+                  type="button"
                   onClick={handlePrevMedia}
                   className="absolute left-2.5 top-1/2 -translate-y-1/2 z-20 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center opacity-0 group-hover/media:opacity-100 transition-opacity backdrop-blur-md"
                   aria-label="Previous image"
@@ -300,6 +344,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
               {currentMediaIdx < post.media.length - 1 && (
                 <button
+                  type="button"
                   onClick={handleNextMedia}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 z-20 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center opacity-0 group-hover/media:opacity-100 transition-opacity backdrop-blur-md"
                   aria-label="Next image"
@@ -309,14 +354,14 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
               )}
 
               {/* Indicator dots */}
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-black/50 px-2 py-1 rounded-full backdrop-blur-md">
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-black/50 px-2 py-1 rounded-full backdrop-blur-md pointer-events-none">
                 {post.media.map((_, i) => (
                   <div 
                     key={i}
-                    className={`w-1.5 h-1.5 rounded-full transition-all ${
+                    className={`rounded-full transition-all duration-300 ${
                       i === currentMediaIdx 
-                        ? 'bg-pink-500 scale-125' 
-                        : 'bg-white/40'
+                        ? 'w-2 h-2 bg-pink-500 scale-110 shadow-sm shadow-pink-500/50' 
+                        : 'w-1.5 h-1.5 bg-white/40'
                     }`}
                   />
                 ))}

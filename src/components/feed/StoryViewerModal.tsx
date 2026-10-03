@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, ChevronLeft, ChevronRight, Heart, Send, Pause, Play, Music, Volume2, VolumeX, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { DeleteConfirmModal } from '../post/DeleteConfirmModal';
+import { formatTimeAgo } from '../../utils/timeAgo';
 
 export const StoryViewerModal: React.FC = () => {
   const { 
@@ -262,7 +263,7 @@ export const StoryViewerModal: React.FC = () => {
                   {currentStory.user.username}
                 </span>
                 <span className="text-[10px] text-white/80 block drop-shadow-sm">
-                  {currentSlide.createdAt}
+                  {formatTimeAgo(currentSlide.createdAt)}
                 </span>
               </div>
             </div>

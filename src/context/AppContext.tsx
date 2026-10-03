@@ -58,7 +58,7 @@ interface AppContextType {
     songUrl?: string
   ) => Promise<void>;
   addNewStory: (
-    mediaUrl: string,
+    mediaUrl: string | string[],
     caption?: string,
     duration?: number,
     songTitle?: string,
@@ -440,9 +440,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Add New Story with Song Support
+  // Add New Story with Song Support & Multi-Slide Support
   const addNewStory = async (
-    mediaUrl: string,
+    mediaUrl: string | string[],
     caption?: string,
     duration?: number,
     songTitle?: string,
@@ -450,7 +450,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     songUrl?: string
   ) => {
     try {
-      await api.stories.create(mediaUrl, caption, duration, songTitle, songArtist, songUrl);
+      if (Array.isArray(mediaUrl)) {
+        for (const url of mediaUrl) {
+          await api.stories.create(url, caption, duration, songTitle, songArtist, songUrl);
+        }
+      } else {
+        await api.stories.create(mediaUrl, caption, duration, songTitle, songArtist, songUrl);
+      }
       const sRes = await api.stories.getAll();
       setStories(sRes.stories);
     } catch (err) {
@@ -498,15 +504,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Delete Existing Story
+  // Delete Existing Story (by slideId or storyId)
   const deleteStory = async (storyId: string) => {
     try {
       await api.stories.delete(storyId);
       const sRes = await api.stories.getAll();
       setStories(sRes.stories);
       if (activeStoryIndex !== null) {
-        const remaining = sRes.stories[activeStoryIndex]?.slides.length || 0;
-        if (remaining === 0) {
+        const currentActive = sRes.stories[activeStoryIndex];
+        if (!currentActive || !currentActive.slides || currentActive.slides.length === 0) {
           closeStoryViewer();
         }
       }

@@ -212,7 +212,7 @@ export const localStore = {
         isLiked: false,
         isSaved: false,
         comments: [],
-        createdAt: 'Just now'
+        createdAt: new Date().toISOString()
       };
 
       posts.unshift(newPost);
@@ -263,7 +263,7 @@ export const localStore = {
         postId,
         user,
         text,
-        createdAt: 'Just now',
+        createdAt: new Date().toISOString(),
         likesCount: 0,
         isLiked: false
       };
@@ -348,12 +348,12 @@ export const localStore = {
         songTitle,
         songArtist,
         songUrl,
-        createdAt: 'Just now'
+        createdAt: new Date().toISOString()
       };
 
       const existingStory = stories.find(s => s.user.id === user.id);
       if (existingStory) {
-        existingStory.slides.unshift(newSlide);
+        existingStory.slides.push(newSlide);
         existingStory.hasUnseen = true;
       } else {
         stories.unshift({
@@ -378,11 +378,19 @@ export const localStore = {
       return { success: true };
     },
 
-    async delete(storyId: string): Promise<{ success: boolean; storyId: string }> {
+    async delete(targetId: string): Promise<{ success: boolean; storyId: string }> {
       let stories = getItem<Story[]>(STORIES_KEY, []);
-      stories = stories.filter(s => s.id !== storyId);
+      
+      // 1. Remove matching slide from any story
+      for (const s of stories) {
+        s.slides = s.slides.filter(slide => slide.id !== targetId);
+      }
+      
+      // 2. Remove any story matching targetId directly OR stories with 0 slides remaining
+      stories = stories.filter(s => s.id !== targetId && s.slides.length > 0);
+      
       setItem(STORIES_KEY, stories);
-      return { success: true, storyId };
+      return { success: true, storyId: targetId };
     }
   },
 
