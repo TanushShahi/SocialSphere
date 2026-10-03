@@ -78,31 +78,34 @@ export const CreatePostModal: React.FC = () => {
     setShowTagPicker(false);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [isProcessingPhotos, setIsProcessingPhotos] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const fileList = Array.from(files);
-    const readPromises = fileList.map(file => {
-      return new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          if (event.target?.result) {
-            resolve(event.target.result as string);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
-    });
-
-    Promise.all(readPromises).then(urls => {
-      if (urls.length > 0) {
-        setSelectedImages(prev => [...prev, ...urls]);
-        if (shareAsStory && (selectedImages.length + urls.length) > 1) {
+    setIsProcessingPhotos(true);
+    try {
+      const fileList = Array.from(files);
+      const compressedList = await Promise.all(
+        fileList.map(file => compressImage(file, 1080, 1080, 0.75))
+      );
+      const validUrls = compressedList.filter(u => Boolean(u && u.length > 20));
+      if (validUrls.length > 0) {
+        setSelectedImages(prev => [...prev, ...validUrls]);
+        if (shareAsStory && (selectedImages.length + validUrls.length) > 1) {
           setIsStoryPromptOpen(true);
         }
       }
-    });
+    } catch (err) {
+      console.error('Failed to process photos:', err);
+    } finally {
+      setIsProcessingPhotos(false);
+      if (e.target) {
+        e.target.value = '';
+      }
+    }
   };
 
   const handleRemoveImage = (indexToRemove: number) => {
@@ -200,23 +203,28 @@ export const CreatePostModal: React.FC = () => {
   ];
 
   return (
-    <div 
-      onClick={handleClose}
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 select-none animate-fade-in overflow-y-auto"
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 select-none animate-fade-in overflow-y-auto">
+      {/* Dim Backdrop Overlay - clicking strictly closes the modal */}
+      <div 
+        onClick={handleClose}
+        className="fixed inset-0 bg-black/80 backdrop-blur-md" 
+      />
+
       {/* Hidden File Input */}
       <input 
         type="file" 
         ref={fileInputRef}
         accept="image/*" 
         multiple
+        onClick={(e) => e.stopPropagation()}
         onChange={handleFileUpload} 
         className="hidden" 
       />
 
+      {/* Modal Dialog Card */}
       <div 
         onClick={(e) => e.stopPropagation()}
-        className="aerogel-card border border-white/15 rounded-3xl w-full max-w-xl overflow-hidden shadow-[0_25px_80px_rgba(0,0,0,0.9)] flex flex-col my-auto max-h-[92vh]"
+        className="relative z-10 aerogel-card border border-white/15 rounded-3xl w-full max-w-xl overflow-hidden shadow-[0_25px_80px_rgba(0,0,0,0.9)] flex flex-col my-auto max-h-[92vh]"
       >
         {/* Top Media Type Switcher Tabs (Mockup) */}
         <div className="flex items-center justify-between px-4 sm:px-6 pt-4 pb-2 border-b border-white/10">
@@ -328,6 +336,13 @@ export const CreatePostModal: React.FC = () => {
                 </span>
                 <span className="text-[11px] text-zinc-400">Slide carousel supported</span>
               </div>
+
+              {isProcessingPhotos && (
+                <div className="flex items-center gap-2 p-3 rounded-2xl bg-pink-500/10 border border-pink-500/30 text-pink-300 text-xs font-semibold animate-pulse">
+                  <Loader2 className="w-4 h-4 animate-spin text-pink-400 flex-shrink-0" />
+                  <span>Optimizing and loading photos...</span>
+                </div>
+              )}
 
               {selectedImages.length === 0 ? (
                 <div 

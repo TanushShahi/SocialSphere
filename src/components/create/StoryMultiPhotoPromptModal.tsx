@@ -21,13 +21,16 @@ export const StoryMultiPhotoPromptModal: React.FC<StoryMultiPhotoPromptModalProp
   if (!isOpen) return null;
 
   return (
-    <div 
-      onClick={onClose}
-      className="fixed inset-0 z-[60] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in select-none text-white"
-    >
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-fade-in select-none text-white">
+      {/* Sibling Dim Backdrop */}
+      <div 
+        onClick={onClose}
+        className="fixed inset-0 bg-black/85 backdrop-blur-md" 
+      />
+
       <div 
         onClick={(e) => e.stopPropagation()}
-        className="aerogel-card border border-white/20 rounded-3xl w-full max-w-md overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.9)] bg-zinc-950/95 p-6 space-y-5 backdrop-blur-2xl"
+        className="relative z-10 aerogel-card border border-white/20 rounded-3xl w-full max-w-md overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.9)] bg-zinc-950/95 p-6 space-y-5 backdrop-blur-2xl"
       >
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -74,7 +77,7 @@ export const StoryMultiPhotoPromptModal: React.FC<StoryMultiPhotoPromptModalProp
                 )}
               </div>
               <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                Upload each photo individually as <strong className="text-zinc-200">${photoCount} sequential story slides</strong> that viewers can tap through one by one.
+                Upload each photo individually as <strong className="text-zinc-200">{photoCount} sequential story slides</strong> that viewers can tap through one by one.
               </p>
             </div>
           </div>

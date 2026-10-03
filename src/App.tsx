@@ -18,6 +18,7 @@ import { PostDetailModal } from './components/feed/PostDetailModal';
 import { CallModal } from './components/calling/CallModal';
 import { InstallAppModal } from './components/navigation/InstallAppModal';
 import { ShareSheetModal } from './components/common/ShareSheetModal';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 const AppContent: React.FC = () => {
   const { 
@@ -72,8 +73,10 @@ const AppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </ErrorBoundary>
   );
 }
