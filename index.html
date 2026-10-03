@@ -12,19 +12,24 @@
     <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png" />
     <link rel="manifest" href="./manifest.json" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Social Sphere • Celestial Social Network</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Grandista&family=Caveat:wght@600&display=swap" rel="stylesheet">
-    <script type="module" crossorigin src="./assets/index-Dz-yR5vt.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DaR9c-lv.css">
+    <script type="module" crossorigin src="./assets/index-D7C4Ep80.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-geUkw4fg.css">
   </head>
   <body class="bg-black text-white antialiased selection:bg-pink-500 selection:text-white overflow-x-hidden">
     <div id="root"></div>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').catch(err => {
+          navigator.serviceWorker.register('./sw.js?v=7').then((reg) => {
+            reg.update().catch(() => {});
+          }).catch(err => {
             console.log('SW registration skipped:', err);
           });
         });
