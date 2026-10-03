@@ -1,4 +1,5 @@
 import { User, Post, Story, Reel, Conversation, NotificationItem } from '../types';
+import { localStore } from './localStore';
 
 const SERVER_URL = ((import.meta as any).env?.VITE_API_URL as string) || '';
 const API_BASE = SERVER_URL ? `${SERVER_URL.replace(/\/$/, '')}/api` : '/api';
@@ -14,6 +15,14 @@ export function setToken(token: string | null): void {
     localStorage.removeItem('sphere_token');
   }
 }
+
+// Check if running on GitHub Pages or static host without remote backend
+const isStaticHost =
+  typeof window !== 'undefined' &&
+  (window.location.hostname.includes('github.io') ||
+   window.location.hostname.includes('surge.sh') ||
+   window.location.protocol === 'file:') &&
+  !SERVER_URL;
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
@@ -56,23 +65,55 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   return data as T;
 }
 
+// Executes remote request, or falls back to local storage if running on static host or remote returns 405/404/network failure
+async function execute<T>(remoteFn: () => Promise<T>, fallbackFn: () => Promise<T>): Promise<T> {
+  if (isStaticHost) {
+    return fallbackFn();
+  }
+  try {
+    return await remoteFn();
+  } catch (err: any) {
+    console.warn('[Sphere API] Remote call unreachable/failed, using local storage:', err.message);
+    return fallbackFn();
+  }
+}
+
 export const api = {
   auth: {
     login: (login: string, password: string) =>
-      request<{ user: User; token: string }>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ login, password }),
-      }),
+      execute(
+        () =>
+          request<{ user: User; token: string }>('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ login, password }),
+          }),
+        () => localStore.auth.login(login, password)
+      ),
+
     register: (username: string, email: string, password: string, name: string) =>
-      request<{ user: User; token: string }>('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({ username, email, password, name }),
-      }),
-    me: () => request<{ user: User }>('/auth/me'),
+      execute(
+        () =>
+          request<{ user: User; token: string }>('/auth/register', {
+            method: 'POST',
+            body: JSON.stringify({ username, email, password, name }),
+          }),
+        () => localStore.auth.register(username, email, password, name)
+      ),
+
+    me: () =>
+      execute(
+        () => request<{ user: User }>('/auth/me'),
+        () => localStore.auth.me()
+      ),
   },
 
   posts: {
-    getFeed: () => request<{ posts: Post[] }>('/posts/feed'),
+    getFeed: () =>
+      execute(
+        () => request<{ posts: Post[] }>('/posts/feed'),
+        () => localStore.posts.getFeed()
+      ),
+
     create: (
       mediaUrls: string[],
       filter: string,
@@ -82,28 +123,58 @@ export const api = {
       songArtist?: string,
       songUrl?: string
     ) =>
-      request<{ post: Post }>('/posts', {
-        method: 'POST',
-        body: JSON.stringify({ mediaUrls, filter, caption, location, songTitle, songArtist, songUrl }),
-      }),
+      execute(
+        () =>
+          request<{ post: Post }>('/posts', {
+            method: 'POST',
+            body: JSON.stringify({ mediaUrls, filter, caption, location, songTitle, songArtist, songUrl }),
+          }),
+        () => localStore.posts.create(mediaUrls, filter, caption, location, songTitle, songArtist, songUrl)
+      ),
+
     like: (postId: string) =>
-      request<{ isLiked: boolean; likesCount: number }>(`/posts/${postId}/like`, {
-        method: 'POST',
-      }),
+      execute(
+        () =>
+          request<{ isLiked: boolean; likesCount: number }>(`/posts/${postId}/like`, {
+            method: 'POST',
+          }),
+        () => localStore.posts.like(postId)
+      ),
+
     save: (postId: string) =>
-      request<{ isSaved: boolean }>(`/posts/${postId}/save`, {
-        method: 'POST',
-      }),
+      execute(
+        () =>
+          request<{ isSaved: boolean }>(`/posts/${postId}/save`, {
+            method: 'POST',
+          }),
+        () => localStore.posts.save(postId)
+      ),
+
     addComment: (postId: string, text: string) =>
-      request<{ comment: any }>(`/posts/${postId}/comments`, {
-        method: 'POST',
-        body: JSON.stringify({ text }),
-      }),
+      execute(
+        () =>
+          request<{ comment: any }>(`/posts/${postId}/comments`, {
+            method: 'POST',
+            body: JSON.stringify({ text }),
+          }),
+        () => localStore.posts.addComment(postId, text)
+      ),
+
     likeComment: (commentId: string) =>
-      request<{ isLiked: boolean; likesCount: number }>(`/posts/comments/${commentId}/like`, {
-        method: 'POST',
-      }),
-    getDetail: (postId: string) => request<{ post: Post }>(`/posts/${postId}`),
+      execute(
+        () =>
+          request<{ isLiked: boolean; likesCount: number }>(`/posts/comments/${commentId}/like`, {
+            method: 'POST',
+          }),
+        () => localStore.posts.likeComment(commentId)
+      ),
+
+    getDetail: (postId: string) =>
+      execute(
+        () => request<{ post: Post }>(`/posts/${postId}`),
+        () => localStore.posts.getDetail(postId)
+      ),
+
     update: (
       postId: string,
       updates: {
@@ -114,18 +185,32 @@ export const api = {
         songUrl?: string;
       }
     ) =>
-      request<{ post: Post }>(`/posts/${postId}`, {
-        method: 'PUT',
-        body: JSON.stringify(updates),
-      }),
+      execute(
+        () =>
+          request<{ post: Post }>(`/posts/${postId}`, {
+            method: 'PUT',
+            body: JSON.stringify(updates),
+          }),
+        () => localStore.posts.update(postId, updates)
+      ),
+
     delete: (postId: string) =>
-      request<{ success: boolean; postId: string }>(`/posts/${postId}`, {
-        method: 'DELETE',
-      }),
+      execute(
+        () =>
+          request<{ success: boolean; postId: string }>(`/posts/${postId}`, {
+            method: 'DELETE',
+          }),
+        () => localStore.posts.delete(postId)
+      ),
   },
 
   stories: {
-    getAll: () => request<{ stories: Story[] }>('/stories'),
+    getAll: () =>
+      execute(
+        () => request<{ stories: Story[] }>('/stories'),
+        () => localStore.stories.getAll()
+      ),
+
     create: (
       mediaUrl: string,
       caption?: string,
@@ -134,70 +219,150 @@ export const api = {
       songArtist?: string,
       songUrl?: string
     ) =>
-      request<{ slide: any }>('/stories', {
-        method: 'POST',
-        body: JSON.stringify({ mediaUrl, caption, duration, songTitle, songArtist, songUrl }),
-      }),
+      execute(
+        () =>
+          request<{ slide: any }>('/stories', {
+            method: 'POST',
+            body: JSON.stringify({ mediaUrl, caption, duration, songTitle, songArtist, songUrl }),
+          }),
+        () => localStore.stories.create(mediaUrl, caption, duration, songTitle, songArtist, songUrl)
+      ),
+
     view: (storyId: string) =>
-      request<{ success: boolean }>(`/stories/${storyId}/view`, {
-        method: 'POST',
-      }),
+      execute(
+        () =>
+          request<{ success: boolean }>(`/stories/${storyId}/view`, {
+            method: 'POST',
+          }),
+        () => localStore.stories.view(storyId)
+      ),
+
     delete: (storyId: string) =>
-      request<{ success: boolean; storyId: string }>(`/stories/${storyId}`, {
-        method: 'DELETE',
-      }),
+      execute(
+        () =>
+          request<{ success: boolean; storyId: string }>(`/stories/${storyId}`, {
+            method: 'DELETE',
+          }),
+        () => localStore.stories.delete(storyId)
+      ),
   },
 
   reels: {
-    getAll: () => request<{ reels: Reel[] }>('/reels'),
+    getAll: () =>
+      execute(
+        () => request<{ reels: Reel[] }>('/reels'),
+        () => localStore.reels.getAll()
+      ),
+
     like: (reelId: string) =>
-      request<{ isLiked: boolean; likesCount: number }>(`/reels/${reelId}/like`, {
-        method: 'POST',
-      }),
+      execute(
+        () =>
+          request<{ isLiked: boolean; likesCount: number }>(`/reels/${reelId}/like`, {
+            method: 'POST',
+          }),
+        () => localStore.reels.like(reelId)
+      ),
+
     save: (reelId: string) =>
-      request<{ isSaved: boolean }>(`/reels/${reelId}/save`, {
-        method: 'POST',
-      }),
+      execute(
+        () =>
+          request<{ isSaved: boolean }>(`/reels/${reelId}/save`, {
+            method: 'POST',
+          }),
+        () => localStore.reels.save(reelId)
+      ),
   },
 
   users: {
-    getProfile: (username: string) => request<{ profile: any }>(`/users/profile/${username}`),
+    getProfile: (username: string) =>
+      execute(
+        () => request<{ profile: any }>(`/users/profile/${username}`),
+        () => localStore.users.getProfile(username)
+      ),
+
     updateProfile: (updates: Partial<User>) =>
-      request<{ user: User }>('/users/profile', {
-        method: 'PUT',
-        body: JSON.stringify(updates),
-      }),
+      execute(
+        () =>
+          request<{ user: User }>('/users/profile', {
+            method: 'PUT',
+            body: JSON.stringify(updates),
+          }),
+        () => localStore.users.updateProfile(updates)
+      ),
+
     follow: (userId: string) =>
-      request<{ isFollowing: boolean }>(`/users/${userId}/follow`, {
-        method: 'POST',
-      }),
-    suggested: () => request<{ users: User[] }>('/users/suggested'),
-    search: (query: string) => request<{ users: User[] }>(`/users/search?q=${encodeURIComponent(query)}`),
+      execute(
+        () =>
+          request<{ isFollowing: boolean }>(`/users/${userId}/follow`, {
+            method: 'POST',
+          }),
+        () => localStore.users.follow(userId)
+      ),
+
+    suggested: () =>
+      execute(
+        () => request<{ users: User[] }>('/users/suggested'),
+        () => localStore.users.suggested()
+      ),
+
+    search: (query: string) =>
+      execute(
+        () => request<{ users: User[] }>(`/users/search?q=${encodeURIComponent(query)}`),
+        () => localStore.users.search(query)
+      ),
   },
 
   messages: {
-    getConversations: () => request<{ conversations: Conversation[] }>('/messages/conversations'),
+    getConversations: () =>
+      execute(
+        () => request<{ conversations: Conversation[] }>('/messages/conversations'),
+        () => localStore.messages.getConversations()
+      ),
+
     getOrCreateConversation: (recipientId: string) =>
-      request<{ conversation: Conversation }>('/messages/conversations', {
-        method: 'POST',
-        body: JSON.stringify({ recipientId }),
-      }),
+      execute(
+        () =>
+          request<{ conversation: Conversation }>('/messages/conversations', {
+            method: 'POST',
+            body: JSON.stringify({ recipientId }),
+          }),
+        () => localStore.messages.getOrCreateConversation(recipientId)
+      ),
+
     sendMessage: (convId: string, text: string, mediaUrl?: string) =>
-      request<{ message: any }>(`/messages/conversations/${convId}/messages`, {
-        method: 'POST',
-        body: JSON.stringify({ text, mediaUrl }),
-      }),
+      execute(
+        () =>
+          request<{ message: any }>(`/messages/conversations/${convId}/messages`, {
+            method: 'POST',
+            body: JSON.stringify({ text, mediaUrl }),
+          }),
+        () => localStore.messages.sendMessage(convId, text, mediaUrl)
+      ),
   },
 
   notifications: {
-    getAll: () => request<{ notifications: NotificationItem[] }>('/notifications'),
+    getAll: () =>
+      execute(
+        () => request<{ notifications: NotificationItem[] }>('/notifications'),
+        () => localStore.notifications.getAll()
+      ),
+
     markRead: (notifId: string) =>
-      request<{ success: boolean }>(`/notifications/${notifId}/read`, {
-        method: 'PUT',
-      }),
+      execute(
+        () =>
+          request<{ success: boolean }>(`/notifications/${notifId}/read`, {
+            method: 'PUT',
+          }),
+        () => localStore.notifications.markRead(notifId)
+      ),
+
     markAllRead: () =>
-      request<{ success: boolean }>('/notifications/read-all', {
-        method: 'PUT',
-      }),
+      execute(
+        () =>
+          request<{ success: boolean }>('/notifications/read-all', {
+            method: 'PUT',
+          }),
+        () => localStore.notifications.markAllRead()
+      ),
   },
 };
