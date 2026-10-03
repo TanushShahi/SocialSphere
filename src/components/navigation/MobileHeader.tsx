@@ -23,12 +23,8 @@ export const MobileHeader: React.FC = () => {
         onClick={() => setActiveTab('feed')}
         className="cursor-pointer flex items-center gap-2"
       >
-        <div className="w-7 h-7 rounded-full bg-gradient-cosmic p-[1.5px] shadow-[0_0_12px_rgba(236,72,153,0.35)] flex-shrink-0">
-          <div className="w-full h-full bg-black rounded-full flex items-center justify-center">
-            <div className="w-2.5 h-2.5 rounded-full border border-white/90 flex items-center justify-center">
-              <div className="w-1 h-1 bg-gradient-to-r from-pink-400 to-cyan-400 rounded-full"></div>
-            </div>
-          </div>
+        <div className="w-8 h-8 rounded-xl p-[1px] bg-gradient-cosmic shadow-[0_0_12px_rgba(236,72,153,0.35)] flex-shrink-0 overflow-hidden">
+          <img src="./icon-192.png" alt="Social Sphere" className="w-full h-full object-cover rounded-xl" />
         </div>
         <span className="text-sm font-extrabold tracking-tight text-gradient-cosmic flex items-center gap-1">
           Social Sphere

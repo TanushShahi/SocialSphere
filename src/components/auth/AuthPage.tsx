@@ -135,11 +135,9 @@ export const AuthPage: React.FC = () => {
           <div className="aerogel-card-glow rounded-3xl p-8 border border-white/15 shadow-[0_20px_70px_rgba(0,0,0,0.8)] backdrop-blur-2xl flex flex-col items-center">
             {/* Holographic Logo Glyph */}
             <div className="relative mb-4 group cursor-pointer">
-              <div className="absolute -inset-2 bg-gradient-cosmic rounded-full blur-md opacity-70 group-hover:opacity-100 transition-opacity"></div>
-              <div className="relative w-14 h-14 rounded-2xl bg-zinc-950 p-[2px] border border-white/20 flex items-center justify-center shadow-xl">
-                <div className="w-8 h-8 rounded-xl bg-gradient-cosmic flex items-center justify-center text-white shadow-inner">
-                  <Sparkles className="w-5 h-5 animate-pulse" />
-                </div>
+              <div className="absolute -inset-2 bg-gradient-cosmic rounded-2xl blur-md opacity-70 group-hover:opacity-100 transition-opacity"></div>
+              <div className="relative w-16 h-16 rounded-2xl p-[1.5px] bg-gradient-cosmic flex items-center justify-center shadow-xl overflow-hidden">
+                <img src="./icon-192.png" alt="Social Sphere" className="w-full h-full object-cover rounded-2xl" />
               </div>
             </div>
 

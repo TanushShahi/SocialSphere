@@ -66,11 +66,9 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({ isOpen, onClos
 
         {/* Luminous Logo Badge */}
         <div className="relative">
-          <div className="absolute -inset-3 bg-gradient-cosmic rounded-full blur-xl opacity-60 animate-pulse"></div>
-          <div className="relative w-18 h-18 rounded-3xl bg-zinc-950 p-[2.5px] border border-white/20 shadow-2xl flex items-center justify-center">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-cosmic flex items-center justify-center text-white shadow-inner">
-              <Download className="w-6 h-6 animate-bounce" />
-            </div>
+          <div className="absolute -inset-3 bg-gradient-cosmic rounded-3xl blur-xl opacity-60 animate-pulse"></div>
+          <div className="relative w-20 h-20 rounded-3xl p-[2px] bg-gradient-cosmic shadow-2xl overflow-hidden">
+            <img src="./icon-192.png" alt="Social Sphere App Icon" className="w-full h-full object-cover rounded-3xl" />
           </div>
         </div>
 

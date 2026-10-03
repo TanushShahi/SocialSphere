@@ -69,12 +69,8 @@ export const Sidebar: React.FC = () => {
             className="cursor-pointer flex items-center gap-3 px-2 py-2 group rounded-2xl hover:bg-white/5 transition-all"
           >
             {/* Holographic Sphere Glyph with revolving aura */}
-            <div className="relative w-10 h-10 rounded-full bg-gradient-cosmic p-[2px] flex-shrink-0 shadow-[0_0_20px_rgba(236,72,153,0.35)] group-hover:scale-105 transition-transform">
-              <div className="w-full h-full bg-black rounded-full flex items-center justify-center relative overflow-hidden">
-                <div className="w-4 h-4 rounded-full border-2 border-white/90 flex items-center justify-center">
-                  <div className="w-1.5 h-1.5 bg-gradient-to-r from-pink-400 to-cyan-400 rounded-full animate-pulse"></div>
-                </div>
-              </div>
+            <div className="relative w-10 h-10 rounded-2xl p-[1px] bg-gradient-cosmic flex-shrink-0 shadow-[0_0_20px_rgba(236,72,153,0.35)] group-hover:scale-105 transition-transform overflow-hidden">
+              <img src="./icon-192.png" alt="Social Sphere" className="w-full h-full object-cover rounded-2xl" />
             </div>
             
             {/* Logo Typography with Cosmic Shimmer */}
