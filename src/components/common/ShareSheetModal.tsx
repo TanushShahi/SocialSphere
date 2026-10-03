@@ -58,6 +58,9 @@ export const ShareSheetModal: React.FC = () => {
       );
       setStoryAdded(true);
       showToast('Added to your story! ✨');
+      setTimeout(() => {
+        closeShareModal();
+      }, 1000);
     } catch (e) {
       console.error(e);
       showToast('Failed to add to story');

@@ -34,6 +34,63 @@ export const EXPLORE_CATEGORIES = [
   'Cyber & Tech'
 ];
 
+export const VISUAL_EXPLORE_DISKS = [
+  {
+    id: 'Travel',
+    name: 'Travel',
+    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&auto=format&fit=crop&q=80',
+    borderColor: 'border-cyan-400 shadow-cyan-500/30'
+  },
+  {
+    id: 'Music',
+    name: 'Music',
+    image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&auto=format&fit=crop&q=80',
+    borderColor: 'border-purple-400 shadow-purple-500/30'
+  },
+  {
+    id: 'Tech',
+    name: 'Tech',
+    image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=300&auto=format&fit=crop&q=80',
+    borderColor: 'border-blue-400 shadow-blue-500/30'
+  },
+  {
+    id: 'Nature',
+    name: 'Nature',
+    image: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=300&auto=format&fit=crop&q=80',
+    borderColor: 'border-emerald-400 shadow-emerald-500/30'
+  },
+  {
+    id: 'Art',
+    name: 'Art',
+    image: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=300&auto=format&fit=crop&q=80',
+    borderColor: 'border-pink-400 shadow-pink-500/30'
+  },
+  {
+    id: 'Anime',
+    name: 'Anime',
+    image: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=300&auto=format&fit=crop&q=80',
+    borderColor: 'border-orange-400 shadow-orange-500/30'
+  },
+  {
+    id: 'Food',
+    name: 'Food',
+    image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300&auto=format&fit=crop&q=80',
+    borderColor: 'border-amber-400 shadow-amber-500/30'
+  },
+  {
+    id: 'Fitness',
+    name: 'Fitness',
+    image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=300&auto=format&fit=crop&q=80',
+    borderColor: 'border-rose-400 shadow-rose-500/30'
+  },
+  {
+    id: 'Fashion',
+    name: 'Fashion',
+    image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=300&auto=format&fit=crop&q=80',
+    borderColor: 'border-fuchsia-400 shadow-fuchsia-500/30'
+  }
+];
+
 type ExploreItem = 
   | { kind: 'post'; data: Post }
   | { kind: 'reel'; data: Reel };
@@ -106,6 +163,24 @@ export const ExploreView: React.FC = () => {
       if (i < postItems.length) mixed.push(postItems[i]);
       if (i < reelItems.length) mixed.push(reelItems[i]);
     }
+
+    const lowerCat = selectedCategory.toLowerCase();
+    const diskMatch = VISUAL_EXPLORE_DISKS.find(d => d.id.toLowerCase() === lowerCat || d.name.toLowerCase() === lowerCat);
+    if (diskMatch) {
+      const tag = diskMatch.id.toLowerCase();
+      const matched = [
+        ...postItems.filter(p => {
+          const post = p.data as Post;
+          return post.caption?.toLowerCase().includes(tag) || post.location?.toLowerCase().includes(tag);
+        }),
+        ...reelItems.filter(r => {
+          const reel = r.data as Reel;
+          return reel.caption?.toLowerCase().includes(tag) || reel.audioTitle?.toLowerCase().includes(tag);
+        })
+      ];
+      if (matched.length > 0) return matched;
+    }
+
     return mixed;
   }, [posts, allReels, selectedCategory]);
 
@@ -274,6 +349,70 @@ export const ExploreView: React.FC = () => {
             placeholder="Search Instagram reels, posts, creators, soundtracks..."
             className="w-full bg-zinc-950/80 border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30 backdrop-blur-xl transition-all shadow-xl"
           />
+        </div>
+      </div>
+
+      {/* 3x3 Circular Visual Category Disks Grid */}
+      <div className="pt-2 select-none">
+        <div className="flex items-center justify-between mb-3 px-1">
+          <span className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-pink-400" />
+            Explore Worlds & Categories
+          </span>
+          {selectedCategory !== 'All Universe' && (
+            <button
+              onClick={() => setSelectedCategory('All Universe')}
+              className="text-[11px] font-bold text-pink-400 hover:text-pink-300 transition-colors"
+            >
+              Reset filter ✕
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-3 sm:grid-cols-9 gap-3 sm:gap-2.5">
+          {VISUAL_EXPLORE_DISKS.map((disk) => {
+            const isSelected = selectedCategory.toLowerCase().includes(disk.id.toLowerCase());
+            return (
+              <button
+                key={disk.id}
+                onClick={() => {
+                  if (isSelected) {
+                    setSelectedCategory('All Universe');
+                  } else {
+                    setSelectedCategory(disk.id);
+                  }
+                }}
+                className="flex flex-col items-center gap-1.5 group cursor-pointer transition-transform active:scale-95"
+              >
+                {/* Circular glowing disk */}
+                <div
+                  className={`relative w-16 h-16 sm:w-14 sm:h-14 rounded-full p-[2px] transition-all duration-300 ${
+                    isSelected
+                      ? `border-2 ${disk.borderColor} scale-110 shadow-lg ring-2 ring-pink-500/50`
+                      : 'border border-white/20 group-hover:border-white/50 group-hover:scale-105'
+                  }`}
+                >
+                  <div className="w-full h-full rounded-full overflow-hidden relative bg-black">
+                    <img
+                      src={disk.image}
+                      alt={disk.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-black/25 group-hover:bg-transparent transition-colors" />
+                  </div>
+                </div>
+
+                {/* Name */}
+                <span
+                  className={`text-[11px] sm:text-[10px] font-bold truncate max-w-full transition-colors ${
+                    isSelected ? 'text-pink-400' : 'text-zinc-300 group-hover:text-white'
+                  }`}
+                >
+                  {disk.name}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 

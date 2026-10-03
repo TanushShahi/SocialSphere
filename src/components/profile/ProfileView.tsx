@@ -18,11 +18,14 @@ import {
   Trash2,
   Check,
   Share2,
-  ShieldAlert
+  ShieldAlert,
+  Globe,
+  Users
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { FollowListModal } from './FollowListModal';
 import { BlockedAccountsModal } from './BlockedAccountsModal';
+import { compressImage } from '../../utils/imageCompressor';
 
 const COSMIC_AVATARS = [
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
@@ -35,6 +38,8 @@ const COSMIC_AVATARS = [
   'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&auto=format&fit=crop&q=80'
 ];
 
+const DEFAULT_BANNER = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200&auto=format&fit=crop&q=80';
+
 export const ProfileView: React.FC = () => {
   const { 
     currentUser, 
@@ -45,10 +50,11 @@ export const ProfileView: React.FC = () => {
     openStoryViewer, 
     stories, 
     logout, 
-    setIsCreatePostOpen 
+    setIsCreatePostOpen,
+    setActiveTab
   } = useApp();
 
-  const [activeSubTab, setActiveSubTab] = useState<'posts' | 'saved' | 'reels'>('posts');
+  const [activeSubTab, setActiveSubTab] = useState<'posts' | 'reels' | 'saved' | 'worlds'>('posts');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAvatarSheetOpen, setIsAvatarSheetOpen] = useState(false);
   const [isPresetModalOpen, setIsPresetModalOpen] = useState(false);
@@ -57,7 +63,13 @@ export const ProfileView: React.FC = () => {
   const [isBlockedModalOpen, setIsBlockedModalOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
+  // Cover Banner state
+  const [coverBanner, setCoverBanner] = useState<string>(() => {
+    return localStorage.getItem('sphere_cover_banner') || DEFAULT_BANNER;
+  });
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const bannerInputRef = useRef<HTMLInputElement | null>(null);
 
   if (!currentUser) return null;
 
@@ -89,7 +101,7 @@ export const ProfileView: React.FC = () => {
     showToast('Profile updated! ✨');
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -98,15 +110,30 @@ export const ProfileView: React.FC = () => {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64 = reader.result as string;
-      setEditAvatar(base64);
-      await updateCurrentUser({ avatar: base64 });
+    try {
+      const compressed = await compressImage(file, 400, 400, 0.85);
+      setEditAvatar(compressed);
+      await updateCurrentUser({ avatar: compressed });
       setIsAvatarSheetOpen(false);
       showToast('Profile picture updated! 📸');
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      showToast('Failed to upload image');
+    }
+    e.target.value = '';
+  };
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const compressed = await compressImage(file, 1280, 600, 0.8);
+      setCoverBanner(compressed);
+      localStorage.setItem('sphere_cover_banner', compressed);
+      showToast('Cover banner updated! 🏔️');
+    } catch {
+      showToast('Failed to update banner');
+    }
     e.target.value = '';
   };
 
@@ -130,7 +157,7 @@ export const ProfileView: React.FC = () => {
   const hasActiveStory = userStoryIdx >= 0 && stories[userStoryIdx].slides.length > 0;
 
   return (
-    <div className="max-w-4xl mx-auto py-6 px-3 sm:px-6 space-y-8 animate-fade-in text-white select-none">
+    <div className="max-w-4xl mx-auto py-4 sm:py-6 px-3 sm:px-6 space-y-6 sm:space-y-8 animate-fade-in text-white select-none">
       {/* Toast Alert */}
       {toastMsg && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-60 px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold rounded-full shadow-2xl animate-bounce">
@@ -138,7 +165,7 @@ export const ProfileView: React.FC = () => {
         </div>
       )}
 
-      {/* Hidden File Picker */}
+      {/* Hidden File Pickers */}
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -146,162 +173,190 @@ export const ProfileView: React.FC = () => {
         onChange={handleFileUpload} 
         className="hidden" 
       />
+      <input 
+        type="file" 
+        ref={bannerInputRef} 
+        accept="image/*" 
+        onChange={handleBannerUpload} 
+        className="hidden" 
+      />
 
-      {/* 1. Celestial Profile Header Card */}
-      <div className="aerogel-card rounded-3xl p-6 sm:p-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-pink-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      {/* 1. Celestial Profile Card with Scenic Mountain Banner */}
+      <div className="aerogel-card rounded-3xl overflow-hidden relative shadow-2xl">
+        {/* Scenic Panoramic Mountain Cover Banner (Mockup style) */}
+        <div className="relative w-full h-44 sm:h-56 overflow-hidden bg-zinc-900 group/banner">
+          <img
+            src={coverBanner}
+            alt="Scenic Mountain Banner"
+            className="w-full h-full object-cover transition-transform duration-700 group-hover/banner:scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+          
+          {/* Banner edit button */}
+          <button
+            onClick={() => bannerInputRef.current?.click()}
+            className="absolute top-4 right-4 z-10 px-3 py-1.5 rounded-xl bg-black/60 hover:bg-black/80 backdrop-blur-md text-white text-[11px] font-bold border border-white/10 flex items-center gap-1.5 transition-all shadow-lg active:scale-95"
+            title="Change cover photo"
+          >
+            <Camera className="w-3.5 h-3.5 text-pink-400" />
+            <span className="hidden sm:inline">Change Cover</span>
+          </button>
+        </div>
 
-        <header className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-12 relative z-10">
-          {/* Avatar with Celestial Story Ring & Camera Upload Badge */}
-          <div className="relative group/avatar">
-            <div 
-              onClick={() => {
-                if (hasActiveStory) {
-                  openStoryViewer(userStoryIdx);
-                } else {
-                  setIsAvatarSheetOpen(true);
-                }
-              }}
-              className={`relative w-28 h-28 sm:w-36 sm:h-36 rounded-full p-[3px] transition-transform duration-300 flex-shrink-0 shadow-2xl cursor-pointer hover:scale-105 ${
-                hasActiveStory 
-                  ? 'bg-gradient-cosmic shadow-[0_0_25px_rgba(236,72,153,0.4)]' 
-                  : 'bg-gradient-to-tr from-pink-500/40 via-purple-500/40 to-cyan-500/40'
-              }`}
-            >
-              <div className="w-full h-full rounded-full overflow-hidden bg-black p-[2px]">
-                <img
-                  src={currentUser.avatar}
-                  alt={currentUser.username}
-                  className="w-full h-full rounded-full object-cover"
-                />
-              </div>
+        {/* Content Area overlapping banner */}
+        <div className="px-5 sm:px-8 pb-6 sm:pb-8 relative">
+          <header className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-8 -mt-16 sm:-mt-20 relative z-10">
+            {/* Avatar with Celestial Story Ring & Camera Upload Badge */}
+            <div className="relative group/avatar flex-shrink-0">
+              <div 
+                onClick={() => {
+                  if (hasActiveStory) {
+                    openStoryViewer(userStoryIdx);
+                  } else {
+                    setIsAvatarSheetOpen(true);
+                  }
+                }}
+                className={`relative w-28 h-28 sm:w-36 sm:h-36 rounded-full p-[3px] transition-transform duration-300 flex-shrink-0 shadow-2xl cursor-pointer hover:scale-105 ${
+                  hasActiveStory 
+                    ? 'bg-gradient-cosmic shadow-[0_0_25px_rgba(236,72,153,0.4)]' 
+                    : 'bg-gradient-to-tr from-pink-500/80 via-purple-500/80 to-cyan-500/80 shadow-[0_0_20px_rgba(236,72,153,0.25)]'
+                }`}
+              >
+                <div className="w-full h-full rounded-full overflow-hidden bg-black p-[2.5px]">
+                  <img
+                    src={currentUser.avatar}
+                    alt={currentUser.username}
+                    className="w-full h-full rounded-full object-cover"
+                  />
+                </div>
 
-              {hasActiveStory && (
-                <span className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-black shadow-[0_0_8px_rgba(16,185,129,0.9)]"></span>
-              )}
-            </div>
-
-            {/* Instagram Camera Icon Overlay Button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsAvatarSheetOpen(true);
-              }}
-              className="absolute bottom-1 right-1 z-20 w-9 h-9 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white flex items-center justify-center shadow-lg border-2 border-zinc-950 hover:scale-110 active:scale-95 transition-all"
-              title="Change profile photo"
-            >
-              <Camera className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* User Details & Stats */}
-          <div className="flex-1 space-y-4 text-center sm:text-left">
-            {/* Top Row: Username & Buttons */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-              <h2 className="text-xl font-black flex items-center justify-center sm:justify-start gap-2">
-                {currentUser.username}
-                {currentUser.isVerified && (
-                  <span className="w-4 h-4 bg-cyan-500 rounded-full flex items-center justify-center text-[10px] text-white">
-                    ✓
-                  </span>
+                {hasActiveStory && (
+                  <span className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-black shadow-[0_0_8px_rgba(16,185,129,0.9)]"></span>
                 )}
-              </h2>
+              </div>
 
-              <div className="flex items-center justify-center gap-2">
+              {/* Instagram Camera Icon Overlay Button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsAvatarSheetOpen(true);
+                }}
+                className="absolute bottom-1 right-1 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white flex items-center justify-center shadow-lg border-2 border-zinc-950 hover:scale-110 active:scale-95 transition-all"
+                title="Change profile photo"
+              >
+                <Camera className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* User Details & Stats */}
+            <div className="flex-1 space-y-3.5 text-center sm:text-left pt-2 sm:pt-4 w-full">
+              {/* Top Row: User Names & Action Buttons */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black flex items-center justify-center sm:justify-start gap-2">
+                    {currentUser.name}
+                    {currentUser.isVerified && (
+                      <span className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center text-[10px] text-white font-bold" title="Verified">
+                        ✓
+                      </span>
+                    )}
+                  </h2>
+                  <p className="text-xs text-zinc-400 font-medium">@{currentUser.username}</p>
+                </div>
+
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                  <button
+                    onClick={() => setIsEditModalOpen(true)}
+                    className="px-4 py-2 bg-gradient-cosmic hover:opacity-95 text-xs font-bold rounded-xl text-white shadow-md shadow-pink-500/20 transition-all active:scale-95"
+                  >
+                    Edit Profile
+                  </button>
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard?.writeText(window.location.href);
+                      showToast('Profile link copied! 📋');
+                    }}
+                    className="px-3.5 py-2 bg-white/5 hover:bg-white/10 text-xs font-semibold rounded-xl border border-white/10 transition-colors"
+                  >
+                    Share
+                  </button>
+                  <button
+                    onClick={() => setIsBlockedModalOpen(true)}
+                    className="px-3 py-2 bg-white/5 hover:bg-white/10 text-xs font-semibold rounded-xl border border-white/10 transition-colors flex items-center gap-1.5 text-zinc-300 hover:text-white"
+                    title="Blocked Accounts"
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+                  </button>
+                  <button
+                    onClick={logout}
+                    className="px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold rounded-xl border border-rose-500/20 transition-colors flex items-center gap-1"
+                    title="Log Out"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Stats Row (Mockup Style: 128 Posts | 12.4K Followers | 420 Following) */}
+              <div className="flex items-center justify-center sm:justify-start gap-3 sm:gap-4 text-xs select-none">
+                <div className="px-4 py-2 rounded-2xl bg-white/5 border border-white/5 text-center min-w-[75px]">
+                  <span className="font-extrabold text-white text-sm block">{userPosts.length}</span>
+                  <span className="text-zinc-400 text-[11px] font-medium">Posts</span>
+                </div>
                 <button
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="px-4 py-1.5 bg-white/10 hover:bg-white/15 text-xs font-semibold rounded-xl border border-white/10 transition-colors"
-                >
-                  Edit profile
-                </button>
-                <button 
+                  type="button"
                   onClick={() => {
-                    navigator.clipboard?.writeText(window.location.href);
-                    showToast('Profile link copied! 📋');
+                    setFollowModalInitialTab('followers');
+                    setIsFollowModalOpen(true);
                   }}
-                  className="px-4 py-1.5 bg-white/10 hover:bg-white/15 text-xs font-semibold rounded-xl border border-white/10 transition-colors"
+                  className="px-4 py-2 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-95 border border-white/5 hover:border-white/15 text-center transition-all cursor-pointer min-w-[85px] group"
+                  title="View followers"
                 >
-                  Share profile
+                  <span className="font-extrabold text-white text-sm block group-hover:text-pink-400 transition-colors">
+                    {currentUser.followersCount.toLocaleString()}
+                  </span>
+                  <span className="text-zinc-400 text-[11px] font-medium">Followers</span>
                 </button>
                 <button
-                  onClick={() => setIsBlockedModalOpen(true)}
-                  className="px-3 py-1.5 bg-white/10 hover:bg-white/15 text-xs font-semibold rounded-xl border border-white/10 transition-colors flex items-center gap-1.5 text-zinc-300 hover:text-white"
-                  title="Blocked Accounts"
+                  type="button"
+                  onClick={() => {
+                    setFollowModalInitialTab('following');
+                    setIsFollowModalOpen(true);
+                  }}
+                  className="px-4 py-2 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-95 border border-white/5 hover:border-white/15 text-center transition-all cursor-pointer min-w-[85px] group"
+                  title="View following"
                 >
-                  <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
-                  <span className="hidden sm:inline">Blocked</span>
-                </button>
-                <button
-                  onClick={logout}
-                  className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold rounded-xl border border-rose-500/20 transition-colors flex items-center gap-1"
-                  title="Log Out"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Log out</span>
+                  <span className="font-extrabold text-white text-sm block group-hover:text-pink-400 transition-colors">
+                    {currentUser.followingCount.toLocaleString()}
+                  </span>
+                  <span className="text-zinc-400 text-[11px] font-medium">Following</span>
                 </button>
               </div>
-            </div>
 
-            {/* Middle Row: Glass Metrics Counters */}
-            <div className="flex items-center justify-center sm:justify-start gap-4 sm:gap-6 text-sm">
-              <div className="px-4 py-2 rounded-2xl bg-white/5 border border-white/5 text-center">
-                <span className="font-extrabold text-white mr-1.5">{userPosts.length}</span>
-                <span className="text-zinc-400 text-xs font-medium">posts</span>
+              {/* User Bio & Link */}
+              <div className="space-y-1.5 text-xs text-left max-w-xl">
+                <p className="text-zinc-200 whitespace-pre-line leading-relaxed">
+                  {currentUser.bio || '✨ Visual Storyteller & World Explorer 📸 Creating moments that inspire'}
+                </p>
+                {currentUser.website && (
+                  <a
+                    href={currentUser.website}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-cyan-400 hover:underline inline-flex items-center gap-1 font-semibold"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    <span>{currentUser.website.replace(/^https?:\/\//, '')}</span>
+                  </a>
+                )}
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setFollowModalInitialTab('followers');
-                  setIsFollowModalOpen(true);
-                }}
-                className="px-4 py-2 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-95 border border-white/5 hover:border-white/15 text-center transition-all cursor-pointer group"
-                title="View followers"
-              >
-                <span className="font-extrabold text-white mr-1.5 group-hover:text-pink-400 transition-colors">
-                  {currentUser.followersCount.toLocaleString()}
-                </span>
-                <span className="text-zinc-400 text-xs font-medium">followers</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setFollowModalInitialTab('following');
-                  setIsFollowModalOpen(true);
-                }}
-                className="px-4 py-2 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-95 border border-white/5 hover:border-white/15 text-center transition-all cursor-pointer group"
-                title="View following"
-              >
-                <span className="font-extrabold text-white mr-1.5 group-hover:text-pink-400 transition-colors">
-                  {currentUser.followingCount.toLocaleString()}
-                </span>
-                <span className="text-zinc-400 text-xs font-medium">following</span>
-              </button>
             </div>
-
-            {/* Bottom Row: Name, Bio & Link */}
-            <div className="space-y-1 text-xs">
-              <p className="font-bold text-white text-sm">{currentUser.name}</p>
-              <p className="text-zinc-300 whitespace-pre-line leading-relaxed max-w-md">
-                {currentUser.bio || 'Creator on Social Sphere ✨'}
-              </p>
-              {currentUser.website && (
-                <a
-                  href={currentUser.website}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-cyan-400 hover:underline inline-flex items-center gap-1 font-semibold pt-1"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  {currentUser.website.replace('https://', '')}
-                </a>
-              )}
-            </div>
-          </div>
-        </header>
+          </header>
+        </div>
       </div>
 
-      {/* 2. Sub-Tabs Header */}
-      <div className="flex items-center justify-center gap-8 border-b border-white/10 text-xs font-bold uppercase tracking-wider">
+      {/* 2. Content Tabs (Posts | Reels | Saved | Worlds) */}
+      <div className="flex items-center justify-center gap-4 sm:gap-8 border-b border-white/10 text-xs font-bold uppercase tracking-wider">
         <button
           onClick={() => setActiveSubTab('posts')}
           className={`flex items-center gap-2 py-3 border-b-2 transition-all ${
@@ -312,6 +367,18 @@ export const ProfileView: React.FC = () => {
         >
           <Grid className="w-4 h-4" />
           <span>Posts ({userPosts.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('reels')}
+          className={`flex items-center gap-2 py-3 border-b-2 transition-all ${
+            activeSubTab === 'reels'
+              ? 'border-pink-500 text-white shadow-[0_4px_12px_rgba(236,72,153,0.3)]'
+              : 'border-transparent text-zinc-500 hover:text-zinc-300'
+          }`}
+        >
+          <Film className="w-4 h-4" />
+          <span>Reels ({userReels.length})</span>
         </button>
 
         <button
@@ -327,19 +394,19 @@ export const ProfileView: React.FC = () => {
         </button>
 
         <button
-          onClick={() => setActiveSubTab('reels')}
+          onClick={() => setActiveSubTab('worlds')}
           className={`flex items-center gap-2 py-3 border-b-2 transition-all ${
-            activeSubTab === 'reels'
+            activeSubTab === 'worlds'
               ? 'border-pink-500 text-white shadow-[0_4px_12px_rgba(236,72,153,0.3)]'
               : 'border-transparent text-zinc-500 hover:text-zinc-300'
           }`}
         >
-          <Film className="w-4 h-4" />
-          <span>Reels ({userReels.length})</span>
+          <Globe className="w-4 h-4" />
+          <span>Worlds</span>
         </button>
       </div>
 
-      {/* 3. Grid Display */}
+      {/* 3. Grid Display based on Active Sub-Tab */}
       {activeSubTab === 'posts' && (
         userPosts.length > 0 ? (
           <div className="grid grid-cols-3 gap-2 sm:gap-4">
@@ -347,40 +414,84 @@ export const ProfileView: React.FC = () => {
               <div
                 key={post.id}
                 onClick={() => openPostDetail(post)}
-                className="relative aspect-square rounded-2xl overflow-hidden cursor-pointer group bg-zinc-950 border border-white/5"
+                className="relative aspect-square rounded-2xl overflow-hidden cursor-pointer group bg-zinc-950 border border-white/5 shadow-md"
               >
                 <img
                   src={post.media[0]?.url || ''}
                   alt={post.caption}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
+                {post.media.length > 1 && (
+                  <div className="absolute top-2 right-2 bg-black/60 px-2 py-0.5 rounded-full backdrop-blur-md text-[10px] font-bold text-white flex items-center gap-1">
+                    <span>1/{post.media.length}</span>
+                  </div>
+                )}
                 {post.songTitle && (
-                  <div className="absolute top-2 right-2 bg-black/60 p-1.5 rounded-full backdrop-blur-md">
+                  <div className="absolute top-2 left-2 bg-black/60 p-1.5 rounded-full backdrop-blur-md">
                     <Music className="w-3 h-3 text-pink-400 animate-pulse" />
                   </div>
                 )}
+                {/* Hover Overlay */}
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 text-white font-bold text-xs backdrop-blur-[2px]">
-                  <div className="flex items-center gap-1">
+                  <span className="flex items-center gap-1">
                     <Heart className="w-4 h-4 fill-white" />
-                    <span>{post.likesCount}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
+                    {post.likesCount}
+                  </span>
+                  <span className="flex items-center gap-1">
                     <MessageCircle className="w-4 h-4 fill-white" />
-                    <span>{post.comments.length}</span>
-                  </div>
+                    {post.comments.length}
+                  </span>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 space-y-3">
-            <p className="text-zinc-400 text-xs">No posts uploaded yet</p>
+          <div className="text-center py-16 aerogel-card rounded-3xl space-y-3">
+            <Grid className="w-10 h-10 text-zinc-600 mx-auto" />
+            <h3 className="text-base font-bold text-white">No Posts Yet</h3>
+            <p className="text-xs text-zinc-400 max-w-xs mx-auto">
+              Share your moments, photos, and musical transmissions with your world.
+            </p>
             <button
               onClick={() => setIsCreatePostOpen(true)}
-              className="px-5 py-2 bg-gradient-cosmic text-white text-xs font-bold rounded-2xl shadow-lg hover:opacity-90"
+              className="mt-2 px-5 py-2 rounded-xl bg-gradient-cosmic text-white text-xs font-bold shadow-lg shadow-pink-500/20 active:scale-95"
             >
-              Create First Post
+              Create Post
             </button>
+          </div>
+        )
+      )}
+
+      {activeSubTab === 'reels' && (
+        userReels.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-4">
+            {userReels.map((reel) => (
+              <div
+                key={reel.id}
+                className="relative aspect-[9/16] rounded-2xl overflow-hidden cursor-pointer group bg-zinc-950 border border-white/5 shadow-md"
+              >
+                <video
+                  src={reel.videoUrl}
+                  poster={reel.thumbnailUrl}
+                  muted
+                  loop
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1 text-white text-xs font-bold drop-shadow-md">
+                  <Heart className="w-3.5 h-3.5 fill-white" />
+                  <span>{reel.likesCount}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16 aerogel-card rounded-3xl space-y-3">
+            <Film className="w-10 h-10 text-zinc-600 mx-auto" />
+            <h3 className="text-base font-bold text-white">No Reels Yet</h3>
+            <p className="text-xs text-zinc-400 max-w-xs mx-auto">
+              Record short celestial clips and soundtrack moments to appear here.
+            </p>
           </div>
         )
       )}
@@ -392,261 +503,141 @@ export const ProfileView: React.FC = () => {
               <div
                 key={post.id}
                 onClick={() => openPostDetail(post)}
-                className="relative aspect-square rounded-2xl overflow-hidden cursor-pointer group bg-zinc-950 border border-white/5"
+                className="relative aspect-square rounded-2xl overflow-hidden cursor-pointer group bg-zinc-950 border border-white/5 shadow-md"
               >
                 <img
                   src={post.media[0]?.url || ''}
                   alt={post.caption}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 text-white font-bold text-xs backdrop-blur-[2px]">
-                  <div className="flex items-center gap-1">
-                    <Heart className="w-4 h-4 fill-white" />
-                    <span>{post.likesCount}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <MessageCircle className="w-4 h-4 fill-white" />
-                    <span>{post.comments.length}</span>
-                  </div>
-                </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 space-y-2">
-            <Bookmark className="w-8 h-8 text-zinc-600 mx-auto" />
-            <p className="text-zinc-400 text-xs">Saved posts will appear here</p>
+          <div className="text-center py-16 aerogel-card rounded-3xl space-y-3">
+            <Bookmark className="w-10 h-10 text-zinc-600 mx-auto" />
+            <h3 className="text-base font-bold text-white">No Saved Posts</h3>
+            <p className="text-xs text-zinc-400 max-w-xs mx-auto">
+              Save posts that inspire you to easily find them again.
+            </p>
           </div>
         )
       )}
 
-      {activeSubTab === 'reels' && (
-        userReels.length > 0 ? (
-          <div className="grid grid-cols-3 gap-2 sm:gap-4">
-            {userReels.map((reel) => (
-              <div
-                key={reel.id}
-                className="relative aspect-[9/16] rounded-2xl overflow-hidden cursor-pointer group bg-zinc-950 border border-white/5"
-              >
-                <img
-                  src={reel.thumbnailUrl}
-                  alt={reel.caption}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 text-white font-bold text-xs backdrop-blur-[2px]">
-                  <div className="flex items-center gap-1">
-                    <Heart className="w-4 h-4 fill-white" />
-                    <span>{reel.likesCount}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-20 space-y-2">
-            <Film className="w-8 h-8 text-zinc-600 mx-auto" />
-            <p className="text-zinc-400 text-xs">Your reels will appear here</p>
-          </div>
-        )
-      )}
-
-      {/* Instagram-Style Avatar Action Sheet Modal */}
-      {isAvatarSheetOpen && (
-        <div 
-          onClick={() => setIsAvatarSheetOpen(false)}
-          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fadeIn"
-        >
-          <div 
-            onClick={e => e.stopPropagation()}
-            className="w-full sm:max-w-sm bg-zinc-900 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 space-y-3 shadow-2xl text-center animate-slideUp"
-          >
-            <div className="w-12 h-1.5 bg-zinc-700 rounded-full mx-auto sm:hidden mb-2" />
-            
-            <div className="w-16 h-16 rounded-full overflow-hidden mx-auto border-2 border-pink-500 p-0.5">
-              <img src={currentUser.avatar} alt="Current Avatar" className="w-full h-full rounded-full object-cover" />
-            </div>
-
-            <h3 className="font-bold text-sm text-white">Change Profile Photo</h3>
-            <p className="text-xs text-zinc-400">Choose a new photo from your device or pick a cosmic avatar</p>
-
-            <div className="pt-2 space-y-2">
-              <button
-                onClick={() => {
-                  fileInputRef.current?.click();
-                }}
-                className="w-full py-3 px-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold text-xs rounded-2xl flex items-center justify-center gap-2 shadow-lg active:scale-98 transition-transform"
-              >
-                <Upload className="w-4 h-4" />
-                <span>Upload from Device / Camera</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setIsAvatarSheetOpen(false);
-                  setIsPresetModalOpen(true);
-                }}
-                className="w-full py-3 px-4 bg-zinc-800 hover:bg-zinc-750 text-white font-semibold text-xs rounded-2xl flex items-center justify-center gap-2 transition-colors border border-zinc-700/60"
-              >
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                <span>Choose Cosmic Preset</span>
-              </button>
-
-              <button
-                onClick={handleRemovePhoto}
-                className="w-full py-3 px-4 text-rose-400 hover:bg-rose-500/10 font-semibold text-xs rounded-2xl flex items-center justify-center gap-2 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Remove Current Photo</span>
-              </button>
-
-              <button
-                onClick={() => setIsAvatarSheetOpen(false)}
-                className="w-full py-2.5 px-4 text-zinc-400 hover:text-white font-medium text-xs rounded-xl transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Cosmic Preset Avatars Picker Modal */}
-      {isPresetModalOpen && (
-        <div 
-          onClick={() => setIsPresetModalOpen(false)}
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn"
-        >
-          <div 
-            onClick={e => e.stopPropagation()}
-            className="w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-3xl p-6 space-y-4 shadow-2xl animate-scaleUp"
-          >
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
-              <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                <span>Choose Cosmic Avatar</span>
-              </h3>
-              <button onClick={() => setIsPresetModalOpen(false)} className="text-zinc-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-4 gap-3 py-2">
-              {COSMIC_AVATARS.map((av, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSelectPreset(av)}
-                  className={`relative aspect-square rounded-2xl overflow-hidden p-0.5 border-2 transition-transform hover:scale-105 active:scale-95 ${
-                    currentUser.avatar === av ? 'border-pink-500 shadow-md shadow-pink-500/30' : 'border-zinc-700 hover:border-zinc-500'
-                  }`}
-                >
-                  <img src={av} alt={`Avatar ${idx}`} className="w-full h-full rounded-xl object-cover" />
-                  {currentUser.avatar === av && (
-                    <div className="absolute inset-0 bg-pink-500/30 flex items-center justify-center">
-                      <Check className="w-4 h-4 text-white drop-shadow-md" />
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-
+      {activeSubTab === 'worlds' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <Globe className="w-4 h-4 text-cyan-400" />
+              <span>Your Worlds & Communities</span>
+            </h3>
             <button
-              onClick={() => setIsPresetModalOpen(false)}
-              className="w-full py-2.5 rounded-xl bg-zinc-800 text-zinc-300 text-xs font-semibold hover:text-white"
+              onClick={() => setActiveTab('worlds')}
+              className="text-xs font-bold text-pink-400 hover:text-pink-300 transition-colors"
             >
-              Close
+              Explore All Worlds →
             </button>
           </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[
+              {
+                id: 'travel-lovers',
+                name: 'Travel Lovers',
+                members: '124.5k',
+                image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500&auto=format&fit=crop&q=80',
+                desc: 'Backpackers, island hoppers, and culture discoverers worldwide.'
+              },
+              {
+                id: 'tech-hub',
+                name: 'Tech & Future Hub',
+                members: '98.2k',
+                image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=500&auto=format&fit=crop&q=80',
+                desc: 'AI, web innovations, gadgets, and next-gen tech discussions.'
+              }
+            ].map(w => (
+              <div key={w.id} className="aerogel-card rounded-2xl overflow-hidden p-4 flex gap-4 items-center">
+                <img src={w.image} alt={w.name} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-bold text-white text-xs truncate">{w.name}</h4>
+                  <p className="text-[11px] text-zinc-400 line-clamp-1">{w.desc}</p>
+                  <p className="text-[10px] text-cyan-400 font-semibold mt-1">{w.members} members • Joined</p>
+                </div>
+                <button
+                  onClick={() => setActiveTab('worlds')}
+                  className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-zinc-300"
+                >
+                  View
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Edit Profile Details Modal */}
+      {/* Edit Profile Modal */}
       {isEditModalOpen && (
         <div 
           onClick={() => setIsEditModalOpen(false)}
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 animate-fade-in"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-zinc-950 border border-white/10 rounded-3xl shadow-2xl p-6 space-y-4"
+            className="aerogel-card rounded-3xl max-w-md w-full p-6 space-y-5 border border-white/15 shadow-2xl"
           >
-            <div className="flex items-center justify-between pb-3 border-b border-white/5">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-pink-400" />
-                <span>Edit Profile</span>
-              </h3>
-              <button
-                onClick={() => setIsEditModalOpen(false)}
-                className="p-1 rounded-full text-zinc-400 hover:text-white"
-              >
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="font-bold text-white text-base">Edit Profile</h3>
+              <button onClick={() => setIsEditModalOpen(false)} className="text-zinc-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Avatar Row inside Edit Modal */}
-            <div className="flex items-center gap-4 p-3 bg-zinc-900/60 rounded-2xl border border-zinc-800">
-              <img 
-                src={currentUser.avatar} 
-                alt={currentUser.username} 
-                className="w-14 h-14 rounded-full object-cover border border-zinc-700" 
-              />
+            <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
               <div>
-                <p className="text-xs font-bold text-white">@{currentUser.username}</p>
-                <button
-                  type="button"
-                  onClick={() => setIsAvatarSheetOpen(true)}
-                  className="text-xs font-bold text-pink-400 hover:text-pink-300 mt-0.5 flex items-center gap-1"
-                >
-                  <Camera className="w-3.5 h-3.5" />
-                  <span>Change photo</span>
-                </button>
-              </div>
-            </div>
-
-            <form onSubmit={handleSaveProfile} className="space-y-3.5 text-xs">
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-zinc-400">Full Name</label>
+                <label className="block text-zinc-400 font-semibold mb-1">Name</label>
                 <input
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-pink-500/50"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-pink-500"
+                  required
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-zinc-400">Bio</label>
+              <div>
+                <label className="block text-zinc-400 font-semibold mb-1">Bio</label>
                 <textarea
                   value={editBio}
                   onChange={(e) => setEditBio(e.target.value)}
                   rows={3}
-                  className="w-full bg-zinc-900 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-pink-500/50 resize-none"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-pink-500 resize-none"
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-zinc-400">Website</label>
+              <div>
+                <label className="block text-zinc-400 font-semibold mb-1">Website URL</label>
                 <input
-                  type="text"
+                  type="url"
                   value={editWebsite}
                   onChange={(e) => setEditWebsite(e.target.value)}
                   placeholder="https://..."
-                  className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-pink-500/50"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-pink-500"
                 />
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-zinc-400 hover:text-white bg-zinc-900"
+                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl text-white font-bold bg-gradient-cosmic shadow-lg shadow-pink-500/20 hover:opacity-95"
+                  className="px-5 py-2 rounded-xl bg-gradient-cosmic text-white font-bold shadow-lg shadow-pink-500/20 active:scale-95"
                 >
-                  Save Profile
+                  Save Changes
                 </button>
               </div>
             </form>
@@ -654,19 +645,106 @@ export const ProfileView: React.FC = () => {
         </div>
       )}
 
-      {/* Followers & Following Modal */}
-      <FollowListModal
-        isOpen={isFollowModalOpen}
-        onClose={() => setIsFollowModalOpen(false)}
-        initialTab={followModalInitialTab}
-        targetUser={currentUser}
-      />
+      {/* Avatar Action Sheet */}
+      {isAvatarSheetOpen && (
+        <div 
+          onClick={() => setIsAvatarSheetOpen(false)}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="aerogel-card rounded-3xl max-w-sm w-full p-5 space-y-3 text-center border border-white/15 shadow-2xl"
+          >
+            <h3 className="font-bold text-white text-base pb-2 border-b border-white/10">Change Profile Photo</h3>
+
+            <button
+              onClick={() => {
+                setIsAvatarSheetOpen(false);
+                fileInputRef.current?.click();
+              }}
+              className="w-full py-2.5 rounded-xl bg-gradient-cosmic text-white font-bold text-xs shadow-md shadow-pink-500/20 flex items-center justify-center gap-2 active:scale-95"
+            >
+              <Upload className="w-4 h-4" />
+              <span>Upload New Photo</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setIsAvatarSheetOpen(false);
+                setIsPresetModalOpen(true);
+              }}
+              className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-200 font-semibold text-xs border border-white/10 flex items-center justify-center gap-2"
+            >
+              <Sparkles className="w-4 h-4 text-pink-400" />
+              <span>Choose Cosmic Avatar</span>
+            </button>
+
+            <button
+              onClick={handleRemovePhoto}
+              className="w-full py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-semibold text-xs border border-rose-500/20 flex items-center justify-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Remove Current Photo</span>
+            </button>
+
+            <button
+              onClick={() => setIsAvatarSheetOpen(false)}
+              className="w-full py-2 text-zinc-400 hover:text-white text-xs font-semibold pt-1"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Preset Cosmic Avatars Picker */}
+      {isPresetModalOpen && (
+        <div 
+          onClick={() => setIsPresetModalOpen(false)}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="aerogel-card rounded-3xl max-w-md w-full p-6 space-y-4 border border-white/15 shadow-2xl"
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <h3 className="font-bold text-white text-base">Select Celestial Avatar</h3>
+              <button onClick={() => setIsPresetModalOpen(false)} className="text-zinc-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-4 gap-3 py-2">
+              {COSMIC_AVATARS.map((url, i) => (
+                <div
+                  key={i}
+                  onClick={() => handleSelectPreset(url)}
+                  className="aspect-square rounded-2xl overflow-hidden cursor-pointer border-2 border-white/10 hover:border-pink-500 transition-all hover:scale-105"
+                >
+                  <img src={url} alt={`Avatar ${i}`} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Follow List Modal */}
+      {isFollowModalOpen && (
+        <FollowListModal
+          userId={currentUser.id}
+          username={currentUser.username}
+          initialTab={followModalInitialTab}
+          onClose={() => setIsFollowModalOpen(false)}
+        />
+      )}
 
       {/* Blocked Accounts Modal */}
-      <BlockedAccountsModal
-        isOpen={isBlockedModalOpen}
-        onClose={() => setIsBlockedModalOpen(false)}
-      />
+      {isBlockedModalOpen && (
+        <BlockedAccountsModal
+          onClose={() => setIsBlockedModalOpen(false)}
+        />
+      )}
     </div>
   );
 };

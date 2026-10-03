@@ -1,4 +1,5 @@
 import { User, Post, Story, Reel, Conversation, NotificationItem, Comment, FollowRelation, BlockRelation } from '../types';
+import { idbGet, idbSet } from './indexedDB';
 
 const USERS_KEY = 'sphere_local_users';
 const POSTS_KEY = 'sphere_local_posts';
@@ -13,20 +14,49 @@ interface StoredUser extends User {
   email?: string;
 }
 
+const memCache: Record<string, any> = {};
+
 function getItem<T>(key: string, defaultValue: T): T {
+  if (memCache[key] !== undefined) {
+    return memCache[key];
+  }
   try {
     const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : defaultValue;
+    const val = raw ? JSON.parse(raw) : defaultValue;
+    memCache[key] = val;
+    return val;
   } catch {
     return defaultValue;
   }
 }
 
 function setItem<T>(key: string, value: T): void {
+  memCache[key] = value;
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (err) {
-    console.error('Local storage quota exceeded or write failed:', err);
+    console.warn('LocalStorage quota limit reached, saving to IndexedDB:', err);
+  }
+  idbSet(key, value).catch(() => {});
+}
+
+export async function initLocalStore(): Promise<void> {
+  const keys = [USERS_KEY, POSTS_KEY, STORIES_KEY, CONVERSATIONS_KEY, FOLLOWS_KEY, BLOCKS_KEY];
+  for (const key of keys) {
+    const idbVal = await idbGet<any>(key);
+    if (idbVal !== null && idbVal !== undefined) {
+      memCache[key] = idbVal;
+      try {
+        localStorage.setItem(key, JSON.stringify(idbVal));
+      } catch {
+        // Kept in memCache and IndexedDB safely
+      }
+    } else {
+      const localVal = getItem(key, null);
+      if (localVal !== null && localVal !== undefined) {
+        await idbSet(key, localVal);
+      }
+    }
   }
 }
 
@@ -340,7 +370,7 @@ export const localStore = {
       const stories = getItem<Story[]>(STORIES_KEY, []);
 
       const newSlide = {
-        id: `slide_${Date.now()}`,
+        id: `slide_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         url: mediaUrl,
         type: 'image' as const,
         caption,
@@ -357,7 +387,7 @@ export const localStore = {
         existingStory.hasUnseen = true;
       } else {
         stories.unshift({
-          id: `story_${Date.now()}`,
+          id: `story_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
           user,
           hasUnseen: true,
           slides: [newSlide]

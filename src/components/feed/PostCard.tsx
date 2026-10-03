@@ -199,19 +199,25 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
             </div>
 
             <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold hover:underline cursor-pointer text-white">
-                  {post.user.username}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs font-bold hover:underline cursor-pointer text-white flex items-center gap-1">
+                  {post.user.name || post.user.username}
+                  {post.user.isVerified && (
+                    <span className="w-3.5 h-3.5 bg-blue-500 rounded-full flex items-center justify-center text-[8px] text-white font-black" title="Verified">
+                      ✓
+                    </span>
+                  )}
                 </span>
+                <span className="text-[11px] text-zinc-400">@{post.user.username}</span>
                 <span className="text-[10px] text-zinc-500">• {formatTimeAgo(post.createdAt)}</span>
 
                 {!isOwner && currentUser && (
                   <button
                     onClick={() => toggleFollowUser(post.user.id)}
-                    className={`text-[11px] font-semibold px-2 py-0.5 rounded-full transition-colors ${
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors ml-1 ${
                       post.user.isFollowing
                         ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                        : 'bg-blue-600/80 hover:bg-blue-500 text-white'
+                        : 'bg-gradient-cosmic text-white shadow-sm'
                     }`}
                   >
                     {post.user.isFollowing ? 'Following' : 'Follow'}
@@ -220,8 +226,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
               </div>
 
               {post.location && (
-                <span className="text-[10px] text-zinc-400 truncate max-w-[180px]">
-                  {post.location}
+                <span className="text-[10px] text-zinc-400 flex items-center gap-1 truncate max-w-[220px] mt-0.5">
+                  <span>📍</span> {post.location}
                 </span>
               )}
 
@@ -371,34 +377,41 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
         </div>
 
         {/* 3. Luminous Action Buttons Bar */}
+        {/* 3. Luminous Action Buttons Bar with Inline Metrics */}
         <div className="flex items-center justify-between pt-3 pb-1 px-1">
-          <div className="flex items-center gap-3">
-            {/* Like */}
+          <div className="flex items-center gap-4">
+            {/* Like with inline count */}
             <button
               onClick={() => toggleLikePost(post.id)}
-              className="p-1 group active:scale-75 transition-transform"
+              className="flex items-center gap-1.5 p-1 group active:scale-75 transition-transform"
               aria-label="Like post"
             >
               <Heart 
-                className={`w-6 h-6 transition-all duration-200 ${
+                className={`w-5 h-5 sm:w-6 sm:h-6 transition-all duration-200 ${
                   post.isLiked 
                     ? 'text-rose-500 fill-rose-500 drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]' 
                     : 'text-zinc-300 hover:text-white stroke-[1.8]'
                 }`} 
               />
+              <span className={`text-xs font-bold ${post.isLiked ? 'text-rose-400' : 'text-zinc-300'}`}>
+                {post.likesCount >= 1000 ? `${(post.likesCount / 1000).toFixed(1)}k` : post.likesCount}
+              </span>
             </button>
 
-            {/* Comment */}
+            {/* Comment with inline count */}
             <button
               onClick={() => {
                 if (commentInputRef.current) {
                   commentInputRef.current.focus();
                 }
               }}
-              className="p-1 text-zinc-300 hover:text-white active:scale-75 transition-transform"
+              className="flex items-center gap-1.5 p-1 text-zinc-300 hover:text-white active:scale-75 transition-transform"
               aria-label="Comment"
             >
-              <MessageCircle className="w-6 h-6 stroke-[1.8]" />
+              <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 stroke-[1.8]" />
+              <span className="text-xs font-bold text-zinc-300">
+                {post.comments.length >= 1000 ? `${(post.comments.length / 1000).toFixed(1)}k` : post.comments.length}
+              </span>
             </button>
 
             {/* Share / Multi-channel Share */}
@@ -408,7 +421,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
               aria-label="Share"
               title="Share post"
             >
-              <Send className="w-6 h-6 stroke-[1.8]" />
+              <Send className="w-5 h-5 sm:w-6 sm:h-6 stroke-[1.8]" />
             </button>
           </div>
 
@@ -419,20 +432,13 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
             aria-label="Save post"
           >
             <Bookmark 
-              className={`w-6 h-6 transition-colors ${
+              className={`w-5 h-5 sm:w-6 sm:h-6 transition-colors ${
                 post.isSaved 
                   ? 'text-pink-400 fill-pink-400 drop-shadow-[0_0_8px_rgba(236,72,153,0.5)]' 
                   : 'stroke-[1.8]'
               }`} 
             />
           </button>
-        </div>
-
-        {/* 4. Likes Metric */}
-        <div className="px-1 py-1">
-          <span className="text-xs font-bold text-white">
-            {post.likesCount.toLocaleString()} {post.likesCount === 1 ? 'like' : 'likes'}
-          </span>
         </div>
 
         {/* 5. Caption */}

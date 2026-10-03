@@ -1,21 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { StoriesBar } from './StoriesBar';
 import { PostCard } from './PostCard';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
 import { User } from '../../types';
-import { CheckCircle2, Sparkles, Compass, Music, UserPlus, Radio, Globe } from 'lucide-react';
+import { CheckCircle2, Sparkles, Compass, Music, UserPlus, Radio, Globe, MapPin } from 'lucide-react';
 import { POPULAR_TRACKS } from '../music/MusicPickerModal';
 
 export const FeedView: React.FC = () => {
   const { posts, currentUser, toggleFollowUser, setIsCreatePostOpen, setActiveTab, startConversationWithUser } = useApp();
   const [suggestedUsers, setSuggestedUsers] = useState<User[]>([]);
+  const [feedFilter, setFeedFilter] = useState<'for_you' | 'following' | 'worlds' | 'nearby'>('for_you');
 
   useEffect(() => {
     api.users.suggested()
       .then(res => setSuggestedUsers(res.users))
       .catch(console.error);
   }, []);
+
+  const filteredPosts = useMemo(() => {
+    if (feedFilter === 'following') {
+      const followingIds = new Set(currentUser?.following || []);
+      return posts.filter(p => followingIds.has(p.user.id) || p.user.id === currentUser?.id);
+    }
+    if (feedFilter === 'worlds') {
+      return posts.filter(p => p.caption.includes('#') || Boolean(p.location));
+    }
+    if (feedFilter === 'nearby') {
+      return posts.filter(p => Boolean(p.location && p.location.trim().length > 0));
+    }
+    return posts;
+  }, [posts, feedFilter, currentUser]);
 
   if (!currentUser) return null;
 
@@ -26,11 +41,38 @@ export const FeedView: React.FC = () => {
         {/* Orbital Stories Bar */}
         <StoriesBar />
 
+        {/* Mockup Filter Chips Row: [ For You ] [ Following ] [ Worlds ] [ Nearby ] */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2 my-1 px-1 select-none">
+          {[
+            { id: 'for_you', label: 'For You', icon: Sparkles },
+            { id: 'following', label: 'Following', icon: UserPlus },
+            { id: 'worlds', label: 'Worlds', icon: Globe },
+            { id: 'nearby', label: 'Nearby', icon: MapPin },
+          ].map(chip => {
+            const Icon = chip.icon;
+            const isActive = feedFilter === chip.id;
+            return (
+              <button
+                key={chip.id}
+                onClick={() => setFeedFilter(chip.id as any)}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 active:scale-95 ${
+                  isActive
+                    ? 'bg-gradient-cosmic text-white shadow-md shadow-pink-500/25 scale-[1.02]'
+                    : 'bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/10'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-zinc-400'}`} />
+                <span>{chip.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
         {/* Posts Stream or Empty State */}
-        {posts.length > 0 ? (
+        {filteredPosts.length > 0 ? (
           <>
             <div className="pt-2 space-y-4">
-              {posts.map((post) => (
+              {filteredPosts.map((post) => (
                 <PostCard key={post.id} post={post} />
               ))}
             </div>

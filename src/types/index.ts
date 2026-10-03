@@ -148,7 +148,7 @@ export interface Conversation {
   messages: Message[];
 }
 
-export type TabType = 'feed' | 'explore' | 'reels' | 'messages' | 'profile' | 'saved';
+export type TabType = 'feed' | 'explore' | 'reels' | 'worlds' | 'messages' | 'profile' | 'saved';
 
 export type FilterType = 
   | 'normal'

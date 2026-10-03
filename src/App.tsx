@@ -9,6 +9,7 @@ import { ExploreView } from './components/explore/ExploreView';
 import { ReelsView } from './components/reels/ReelsView';
 import { MessagesView } from './components/messages/MessagesView';
 import { ProfileView } from './components/profile/ProfileView';
+import { WorldsView } from './components/worlds/WorldsView';
 import { SearchDrawer } from './components/drawers/SearchDrawer';
 import { NotificationsDrawer } from './components/drawers/NotificationsDrawer';
 import { CreatePostModal } from './components/create/CreatePostModal';
@@ -48,6 +49,7 @@ const AppContent: React.FC = () => {
         {activeTab === 'feed' && <FeedView />}
         {activeTab === 'explore' && <ExploreView />}
         {activeTab === 'reels' && <ReelsView />}
+        {activeTab === 'worlds' && <WorldsView />}
         {activeTab === 'messages' && <MessagesView />}
         {activeTab === 'profile' && <ProfileView />}
       </div>

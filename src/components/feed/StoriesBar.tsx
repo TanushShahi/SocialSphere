@@ -75,7 +75,7 @@ export const StoriesBar: React.FC = () => {
             </button>
           </div>
           <span className="text-[10px] sm:text-[11px] text-zinc-300 group-hover:text-white truncate w-16 sm:w-18 text-center font-medium transition-colors">
-            Your Orbit
+            Your Story
           </span>
         </div>
 

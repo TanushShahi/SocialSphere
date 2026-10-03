@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Compass, Plus, Film, Send } from 'lucide-react';
+import { Home, Compass, Plus, Film, Globe, Send } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const BottomNav: React.FC = () => {
@@ -23,13 +23,13 @@ export const BottomNav: React.FC = () => {
 
   return (
     <div className="md:hidden fixed bottom-2.5 sm:bottom-3 left-3 right-3 sm:left-4 sm:right-4 z-40 select-none pb-[env(safe-area-inset-bottom)]">
-      <nav className="spatial-dock rounded-full px-4 sm:px-5 py-2 sm:py-2.5 flex items-center justify-between shadow-2xl backdrop-blur-xl">
+      <nav className="spatial-dock rounded-full px-3.5 sm:px-4 py-2 flex items-center justify-between shadow-2xl backdrop-blur-xl border border-white/10 bg-zinc-950/80">
         {/* Feed */}
         <button
           onClick={() => handleTab('feed')}
           className={`p-2 transition-all active:scale-90 ${
             activeTab === 'feed' 
-              ? 'text-violet-400 drop-shadow-[0_0_8px_rgba(139,92,246,0.6)]' 
+              ? 'text-pink-400 drop-shadow-[0_0_8px_rgba(236,72,153,0.6)]' 
               : 'text-zinc-400 hover:text-white'
           }`}
           aria-label="Feed"
@@ -42,7 +42,7 @@ export const BottomNav: React.FC = () => {
           onClick={() => handleTab('explore')}
           className={`p-2 transition-all active:scale-90 ${
             activeTab === 'explore' 
-              ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)]' 
+              ? 'text-pink-400 drop-shadow-[0_0_8px_rgba(236,72,153,0.6)]' 
               : 'text-zinc-400 hover:text-white'
           }`}
           aria-label="Explore"
@@ -50,13 +50,26 @@ export const BottomNav: React.FC = () => {
           <Compass className="w-5 h-5 stroke-[2.2]" />
         </button>
 
-        {/* Central Create Button */}
+        {/* Central Glowing Create Button matching mockup */}
         <button
           onClick={() => setIsCreatePostOpen(true)}
-          className="p-2.5 rounded-full bg-gradient-cosmic text-white shadow-lg shadow-pink-500/40 transition-transform active:scale-90"
+          className="p-2.5 rounded-full bg-gradient-cosmic text-white shadow-xl shadow-pink-500/35 transition-transform active:scale-90 hover:scale-105"
           aria-label="Create Post"
         >
           <Plus className="w-5 h-5 stroke-[3]" />
+        </button>
+
+        {/* Worlds Communities */}
+        <button
+          onClick={() => handleTab('worlds')}
+          className={`p-2 transition-all active:scale-90 ${
+            activeTab === 'worlds' 
+              ? 'text-pink-400 drop-shadow-[0_0_8px_rgba(236,72,153,0.6)]' 
+              : 'text-zinc-400 hover:text-white'
+          }`}
+          aria-label="Worlds"
+        >
+          <Globe className="w-5 h-5 stroke-[2.2]" />
         </button>
 
         {/* Reels */}
@@ -64,7 +77,7 @@ export const BottomNav: React.FC = () => {
           onClick={() => handleTab('reels')}
           className={`p-2 transition-all active:scale-90 ${
             activeTab === 'reels' 
-              ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]' 
+              ? 'text-pink-400 drop-shadow-[0_0_8px_rgba(236,72,153,0.6)]' 
               : 'text-zinc-400 hover:text-white'
           }`}
           aria-label="Reels"

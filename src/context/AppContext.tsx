@@ -12,6 +12,8 @@ import {
   ShareItem
 } from '../types';
 import { api, getToken, setToken } from '../api/client';
+import { initLocalStore } from '../api/localStore';
+import { compressImage } from '../utils/imageCompressor';
 import { getSocket, registerSocketUser } from '../services/socket';
 
 interface AppContextType {
@@ -267,9 +269,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Check auth session on startup
+  // Check auth session on startup and hydrate storage from IndexedDB
   useEffect(() => {
     const initAuth = async () => {
+      await initLocalStore();
       const token = getToken();
       if (token) {
         try {
@@ -419,7 +422,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Add New Post with Song Support
+  // Add New Post with Song Support & Auto-Compression
   const addNewPost = async (
     mediaUrls: string[],
     caption: string,
@@ -430,17 +433,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     songUrl?: string
   ) => {
     try {
-      const res = await api.posts.create(mediaUrls, filter, caption, location, songTitle, songArtist, songUrl);
+      if (!mediaUrls || mediaUrls.length === 0) return;
+      const compressedUrls = await Promise.all(
+        mediaUrls.map(url => compressImage(url, 1280, 1280, 0.8))
+      );
+      const res = await api.posts.create(compressedUrls, filter, caption, location, songTitle, songArtist, songUrl);
       setPosts(prev => [res.post, ...prev]);
       if (currentUser) {
         setCurrentUser({ ...currentUser, postsCount: currentUser.postsCount + 1 });
       }
     } catch (err) {
-      console.error(err);
+      console.error('addNewPost failed:', err);
+      throw err;
     }
   };
 
-  // Add New Story with Song Support & Multi-Slide Support
+  // Add New Story with Song Support, Multi-Slide & Auto-Compression
   const addNewStory = async (
     mediaUrl: string | string[],
     caption?: string,
@@ -452,15 +460,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       if (Array.isArray(mediaUrl)) {
         for (const url of mediaUrl) {
-          await api.stories.create(url, caption, duration, songTitle, songArtist, songUrl);
+          if (!url) continue;
+          const comp = await compressImage(url, 1080, 1920, 0.8);
+          await api.stories.create(comp, caption, duration, songTitle, songArtist, songUrl);
         }
       } else {
-        await api.stories.create(mediaUrl, caption, duration, songTitle, songArtist, songUrl);
+        if (!mediaUrl) return;
+        const comp = await compressImage(mediaUrl, 1080, 1920, 0.8);
+        await api.stories.create(comp, caption, duration, songTitle, songArtist, songUrl);
       }
       const sRes = await api.stories.getAll();
       setStories(sRes.stories);
     } catch (err) {
-      console.error(err);
+      console.error('addNewStory failed:', err);
+      throw err;
     }
   };
 
