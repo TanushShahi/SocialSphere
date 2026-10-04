@@ -67,7 +67,7 @@ export const cloudRegistry = {
       const json = await res.json();
       const users = json?.data?.users;
       if (!Array.isArray(users)) return [];
-      const MOCK_NAMES = new Set(['alex_creator', 'sophia_celestial', 'liam_sound', 'usr_alex', 'usr_sophia', 'usr_liam']);
+      const MOCK_NAMES = new Set(['alex_creator', 'sophia_celestial', 'liam_sound', 'usr_alex', 'usr_sophia', 'usr_liam', 'tanush', 'usr_tanush']);
       return users.filter(u => u && !MOCK_NAMES.has(u.username?.toLowerCase()) && !MOCK_NAMES.has(u.id?.toLowerCase()));
     } catch (err) {
       console.warn('[CloudRegistry] Failed to fetch users from cloud registry:', err);

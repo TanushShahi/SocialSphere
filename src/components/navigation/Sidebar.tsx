@@ -112,7 +112,7 @@ export const Sidebar: React.FC = () => {
               <div className={`p-1.5 rounded-xl transition-transform group-hover:scale-110 ${isSearchOpen ? 'text-cyan-400' : ''}`}>
                 <Search className="w-5 h-5 stroke-[2.2]" />
               </div>
-              <span className={`${isDrawerOpen ? 'hidden' : 'hidden xl:inline text-xs font-semibold'}`}>Global Radar</span>
+              <span className={`${isDrawerOpen ? 'hidden' : 'hidden xl:inline text-xs font-semibold'}`}>Search</span>
             </button>
 
             {/* Explore / World */}

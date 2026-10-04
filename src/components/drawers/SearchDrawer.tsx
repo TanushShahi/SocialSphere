@@ -20,7 +20,8 @@ import { User } from '../../types';
 
 const MOCK_BLACKLIST = new Set([
   'alex_creator', 'sophia_celestial', 'liam_sound', 
-  'usr_alex', 'usr_sophia', 'usr_liam'
+  'usr_alex', 'usr_sophia', 'usr_liam',
+  'tanush', 'usr_tanush'
 ]);
 
 export const SearchDrawer: React.FC = () => {

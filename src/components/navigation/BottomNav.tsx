@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Compass, Plus, Film, Globe, Send } from 'lucide-react';
+import { Home, Search, Plus, Film, Globe, Send } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const BottomNav: React.FC = () => {
@@ -37,7 +37,7 @@ export const BottomNav: React.FC = () => {
           <Home className="w-5 h-5 stroke-[2.2]" />
         </button>
 
-        {/* Explore */}
+        {/* Search & Explore */}
         <button
           onClick={() => handleTab('explore')}
           className={`p-2 transition-all active:scale-90 ${
@@ -45,9 +45,10 @@ export const BottomNav: React.FC = () => {
               ? 'text-pink-400 drop-shadow-[0_0_8px_rgba(236,72,153,0.6)]' 
               : 'text-zinc-400 hover:text-white'
           }`}
-          aria-label="Explore"
+          aria-label="Search"
+          title="Search Friends & Explore"
         >
-          <Compass className="w-5 h-5 stroke-[2.2]" />
+          <Search className="w-5 h-5 stroke-[2.2]" />
         </button>
 
         {/* Central Glowing Create Button matching mockup */}

@@ -63,7 +63,8 @@ function setItem<T>(key: string, value: T): void {
 
 const MOCK_USERNAMES = new Set([
   'alex_creator', 'sophia_celestial', 'liam_sound', 
-  'usr_alex', 'usr_sophia', 'usr_liam'
+  'usr_alex', 'usr_sophia', 'usr_liam',
+  'tanush', 'usr_tanush'
 ]);
 
 export async function initLocalStore(): Promise<void> {
@@ -148,52 +149,7 @@ export async function initLocalStore(): Promise<void> {
     } catch {}
   }).catch(() => {});
 
-  // Ensure initial welcome posts exist if POSTS_KEY is empty
-  if (currentPosts.length === 0) {
-    const welcomePost: Post = {
-      id: 'post_welcome_sphere',
-      user: {
-        id: 'usr_tanush',
-        username: 'tanush',
-        name: 'Tanush Shahi',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-        followersCount: 1240,
-        followingCount: 180,
-        postsCount: 1,
-        isVerified: true
-      },
-      media: [
-        {
-          id: 'med_welcome_1',
-          url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1080&auto=format&fit=crop&q=80',
-          type: 'image',
-          filter: 'normal'
-        },
-        {
-          id: 'med_welcome_2',
-          url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1080&auto=format&fit=crop&q=80',
-          type: 'image',
-          filter: 'celestial'
-        }
-      ],
-      caption: 'Welcome to Social Sphere! 🌌 Connect with friends worldwide using your unique Sphere ID.',
-      location: 'Cosmic Core Orbit',
-      songTitle: 'Starfall Reverie',
-      songArtist: 'Sphere Soundscapes',
-      songUrl: 'https://cdn.freesound.org/previews/612/612089_5674468-lq.mp3',
-      likesCount: 128,
-      isLiked: false,
-      isSaved: false,
-      comments: [],
-      createdAt: new Date().toISOString()
-    };
-    currentPosts.push(welcomePost);
-    memCache[POSTS_KEY] = currentPosts;
-    try {
-      localStorage.setItem(POSTS_KEY, JSON.stringify(currentPosts));
-    } catch {}
-    idbSet(POSTS_KEY, currentPosts).catch(() => {});
-  }
+  // No hardcoded mock posts - users only see real transmissions from their community
 
   for (const key of otherKeys) {
     let val = await idbGet<any>(key);
