@@ -160,13 +160,10 @@ export const ExploreView: React.FC = () => {
     const timeout = setTimeout(async () => {
       try {
         const res = await api.users.search(q);
-        const MOCK_BLACKLIST = new Set([
-          'alex_creator', 'sophia_celestial', 'liam_sound', 
-          'usr_alex', 'usr_sophia', 'usr_liam', 'tanush', 'usr_tanush'
-        ]);
-        const clean = (res.users || []).filter(
-          u => u && !MOCK_BLACKLIST.has((u.username || '').toLowerCase()) && !MOCK_BLACKLIST.has((u.id || '').toLowerCase())
-        );
+        // The backend is the source of truth for registered accounts.
+        // Do not blacklist real usernames here — a genuine account may use
+        // any username, including names that were previously used by mock data.
+        const clean = (res.users || []).filter(Boolean);
         setUserResults(clean);
       } catch (err) {
         console.error('Explore user search error:', err);
