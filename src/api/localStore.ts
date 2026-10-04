@@ -1065,7 +1065,8 @@ export const localStore = {
       };
 
       return { user: cleanUser };
-    }  },
+    }
+  },
 
   messages: {
     async getConversations(): Promise<{ conversations: Conversation[] }> {
