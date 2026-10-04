@@ -13,6 +13,7 @@ import { WorldsView } from './components/worlds/WorldsView';
 import { SearchDrawer } from './components/drawers/SearchDrawer';
 import { NotificationsDrawer } from './components/drawers/NotificationsDrawer';
 import { CreatePostModal } from './components/create/CreatePostModal';
+import { CreateStoryModal } from './components/create/CreateStoryModal';
 import { StoryViewerModal } from './components/feed/StoryViewerModal';
 import { PostDetailModal } from './components/feed/PostDetailModal';
 import { CallModal } from './components/calling/CallModal';
@@ -63,6 +64,7 @@ const AppContent: React.FC = () => {
       <SearchDrawer />
       <NotificationsDrawer />
       <CreatePostModal />
+      <CreateStoryModal />
       <StoryViewerModal />
       <PostDetailModal />
       <CallModal session={callSession} onEndCall={endCall} onAcceptCall={acceptIncomingCall} />

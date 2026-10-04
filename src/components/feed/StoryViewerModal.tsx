@@ -269,7 +269,7 @@ export const StoryViewerModal: React.FC = () => {
             </div>
 
             {/* Action buttons (Sound toggle, Pause, Delete, Close) */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 sm:gap-2.5">
               {currentSlide.songUrl && (
                 <button
                   type="button"
@@ -305,10 +305,10 @@ export const StoryViewerModal: React.FC = () => {
                     setIsPaused(true);
                     setIsDeleteModalOpen(true);
                   }}
-                  className="p-1.5 text-rose-300 hover:text-rose-100 bg-rose-500/20 hover:bg-rose-500/40 rounded-full backdrop-blur-md border border-rose-500/30 transition-colors"
+                  className="w-7 h-7 flex items-center justify-center text-rose-300 hover:text-rose-100 bg-rose-500/20 hover:bg-rose-500/40 rounded-full backdrop-blur-md border border-rose-500/30 transition-colors flex-shrink-0"
                   title="Delete this story"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}
 
@@ -319,7 +319,7 @@ export const StoryViewerModal: React.FC = () => {
                   e.stopPropagation();
                   closeStoryViewer();
                 }}
-                className="p-1.5 text-white/90 hover:text-white bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-md transition-colors"
+                className="w-7 h-7 flex items-center justify-center text-white/90 hover:text-white bg-black/40 hover:bg-black/70 rounded-full backdrop-blur-md transition-colors flex-shrink-0 ml-1"
                 title="Close"
                 aria-label="Close story"
               >

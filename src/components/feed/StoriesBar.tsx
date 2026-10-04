@@ -3,7 +3,7 @@ import { Plus, ChevronLeft, ChevronRight, Music, Sparkles } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const StoriesBar: React.FC = () => {
-  const { stories, currentUser, openStoryViewer, setIsCreatePostOpen } = useApp();
+  const { stories, currentUser, openStoryViewer, setIsCreateStoryOpen, setActivePlayingPostId } = useApp();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   if (!currentUser) return null;
@@ -44,7 +44,8 @@ export const StoriesBar: React.FC = () => {
                   const idx = stories.findIndex(s => s.user.id === currentUser.id);
                   openStoryViewer(idx);
                 } else {
-                  setIsCreatePostOpen(true);
+                  setActivePlayingPostId(null);
+                  setIsCreateStoryOpen(true);
                 }
               }}
               className={`relative w-14 h-14 sm:w-[68px] sm:h-[68px] rounded-full p-[2px] sm:p-[2.5px] transition-all duration-300 group-hover:scale-105 ${
@@ -66,7 +67,8 @@ export const StoriesBar: React.FC = () => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setIsCreatePostOpen(true);
+                setActivePlayingPostId(null);
+                setIsCreateStoryOpen(true);
               }}
               className="absolute -bottom-0.5 -right-0.5 w-5 h-5 sm:w-6 sm:h-6 bg-gradient-sphere rounded-full flex items-center justify-center text-white border-2 border-black shadow-lg shadow-pink-500/30 group-hover:scale-110 transition-transform"
               title="Add to story"

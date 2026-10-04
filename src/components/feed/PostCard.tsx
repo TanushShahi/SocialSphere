@@ -46,7 +46,9 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
     setActivePlayingPostId,
     activeStoryIndex,
     activeTab,
-    selectedPostForDetail
+    selectedPostForDetail,
+    isCreatePostOpen,
+    isCreateStoryOpen
   } = useApp();
 
   const [currentMediaIdx, setCurrentMediaIdx] = useState(0);
@@ -73,7 +75,9 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
     const shouldPlay = isThisPostPlaying && 
                        activeStoryIndex === null && 
                        activeTab === 'feed' && 
-                       selectedPostForDetail === null;
+                       selectedPostForDetail === null &&
+                       !isCreatePostOpen &&
+                       !isCreateStoryOpen;
 
     if (shouldPlay) {
       if (!audioPlayerRef.current) {
@@ -97,7 +101,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
       }
       setIsPlayingAudio(false);
     }
-  }, [isThisPostPlaying, post.songUrl, activeStoryIndex, activeTab, selectedPostForDetail]);
+  }, [isThisPostPlaying, post.songUrl, activeStoryIndex, activeTab, selectedPostForDetail, isCreatePostOpen, isCreateStoryOpen]);
 
   useEffect(() => {
     return () => {
@@ -119,7 +123,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
         entries.forEach((entry) => {
           // When card is substantially in view (> 55% in viewport)
           if (entry.intersectionRatio >= 0.55) {
-            if (activeStoryIndex === null && activeTab === 'feed' && selectedPostForDetail === null) {
+            if (activeStoryIndex === null && activeTab === 'feed' && selectedPostForDetail === null && !isCreatePostOpen && !isCreateStoryOpen) {
               setActivePlayingPostId(post.id);
             }
           } else if (entry.intersectionRatio < 0.35) {
@@ -137,7 +141,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [post.id, post.songUrl, activeStoryIndex, activeTab, selectedPostForDetail, activePlayingPostId]);
+  }, [post.id, post.songUrl, activeStoryIndex, activeTab, selectedPostForDetail, activePlayingPostId, isCreatePostOpen, isCreateStoryOpen]);
 
   const toggleAudio = (e: React.MouseEvent) => {
     e.stopPropagation();

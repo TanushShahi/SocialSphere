@@ -40,6 +40,8 @@ interface AppContextType {
   closePostDetail: () => void;
   isCreatePostOpen: boolean;
   setIsCreatePostOpen: (open: boolean) => void;
+  isCreateStoryOpen: boolean;
+  setIsCreateStoryOpen: (open: boolean) => void;
   isSearchOpen: boolean;
   setIsSearchOpen: (open: boolean) => void;
   isNotificationsOpen: boolean;
@@ -158,6 +160,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(null);
   const [selectedPostForDetail, setSelectedPostForDetail] = useState<Post | null>(null);
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
+  const [isCreateStoryOpen, setIsCreateStoryOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
@@ -172,12 +175,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Feed & Full-screen Audio State
   const [activePlayingPostId, setActivePlayingPostId] = useState<string | null>(null);
 
-  // Automatically pause feed audio if stories are open, leaving feed tab, or active calls
+  // Automatically pause feed audio if stories are open, leaving feed tab, or active calls, or modals
   useEffect(() => {
-    if (activeStoryIndex !== null || activeTab !== 'feed' || callSession !== null || isCreatePostOpen) {
+    if (activeStoryIndex !== null || activeTab !== 'feed' || callSession !== null || isCreatePostOpen || isCreateStoryOpen) {
       setActivePlayingPostId(null);
     }
-  }, [activeStoryIndex, activeTab, callSession, isCreatePostOpen]);
+  }, [activeStoryIndex, activeTab, callSession, isCreatePostOpen, isCreateStoryOpen]);
 
   // Socket.IO real-time event subscriptions
   useEffect(() => {
@@ -837,6 +840,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         closePostDetail,
         isCreatePostOpen,
         setIsCreatePostOpen,
+        isCreateStoryOpen,
+        setIsCreateStoryOpen,
         isSearchOpen,
         setIsSearchOpen,
         isNotificationsOpen,
