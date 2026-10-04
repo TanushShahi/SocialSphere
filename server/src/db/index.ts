@@ -6,7 +6,9 @@ import fs from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dataDir = path.join(__dirname, '../../data');
+const dataDir = process.env.PERSISTENT_DATA_DIR
+  ? path.resolve(process.env.PERSISTENT_DATA_DIR)
+  : path.join(__dirname, '../../data');
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
