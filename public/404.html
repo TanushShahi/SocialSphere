@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Social Sphere</title>
+    <script>
+      (function() {
+        var path = window.location.pathname;
+        var origin = window.location.origin;
+        var search = window.location.search || '';
+        var hash = window.location.hash || '';
+
+        // If path is lowercase /socialsphere or missing trailing slash /SocialSphere
+        if (path.toLowerCase().indexOf('/socialsphere') === 0) {
+          window.location.replace(origin + '/SocialSphere/' + search + hash);
+          return;
+        }
+        window.location.replace(origin + '/SocialSphere/' + search + hash);
+      })();
+    </script>
+  </head>
+  <body>
+    <p>Opening <a href="/SocialSphere/">Social Sphere</a>...</p>
+  </body>
+</html>

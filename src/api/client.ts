@@ -337,6 +337,16 @@ export const api = {
         () => request<{ users: User[] }>(`/users/search?q=${encodeURIComponent(query)}`),
         () => localStore.users.search(query)
       ),
+
+    connectFriend: (idOrUsername: string, options?: { name?: string; avatar?: string }) =>
+      execute(
+        () =>
+          request<{ user: User }>('/users/connect', {
+            method: 'POST',
+            body: JSON.stringify({ idOrUsername, ...options }),
+          }),
+        () => localStore.users.connectFriend(idOrUsername, options)
+      ),
   },
 
   messages: {

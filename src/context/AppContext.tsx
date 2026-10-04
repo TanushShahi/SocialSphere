@@ -105,6 +105,7 @@ interface AppContextType {
   activePlayingPostId: string | null;
   setActivePlayingPostId: (id: string | null) => void;
   refreshData: () => Promise<void>;
+  connectFriend: (idOrHandle: string, options?: { name?: string; avatar?: string }) => Promise<User | null>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -328,6 +329,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setIsAuthenticated(false);
         }
       }
+
+      // Check for deep link friend connect (?connect=true&id=... or ?id=usr_... or ?u=username)
+      if (typeof window !== 'undefined' && window.location.search) {
+        try {
+          const params = new URLSearchParams(window.location.search);
+          const friendId = params.get('id');
+          const friendUser = params.get('u') || params.get('username');
+          const friendName = params.get('n') || params.get('name');
+          const friendAvatar = params.get('a') || params.get('avatar');
+
+          if (friendId || friendUser) {
+            const target = friendId || friendUser!;
+            await api.users.connectFriend(target, {
+              name: friendName ? decodeURIComponent(friendName) : undefined,
+              avatar: friendAvatar ? decodeURIComponent(friendAvatar) : undefined
+            });
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+          }
+        } catch (linkErr) {
+          console.warn('[Sphere] Auto-connect link warning:', linkErr);
+        }
+      }
+
       await refreshData();
     };
 
@@ -811,6 +836,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const connectFriend = async (idOrHandle: string, options?: { name?: string; avatar?: string }): Promise<User | null> => {
+    try {
+      const res = await api.users.connectFriend(idOrHandle, options);
+      if (res?.user) {
+        await refreshData();
+        return res.user;
+      }
+    } catch (err) {
+      console.error('Failed to connect friend:', err);
+    }
+    return null;
+  };
+
   const unreadNotificationsCount = notifications.filter(n => !n.isRead).length;
   const unreadMessagesCount = conversations.reduce((acc, c) => acc + c.unreadCount, 0);
 
@@ -881,6 +919,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         activePlayingPostId,
         setActivePlayingPostId,
         refreshData,
+        connectFriend,
       }}
     >
       {children}

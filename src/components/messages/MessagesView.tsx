@@ -29,7 +29,8 @@ export const MessagesView: React.FC = () => {
     initiateCall, 
     onlineUserIds, 
     startConversationWithUser,
-    toggleBlockUser
+    toggleBlockUser,
+    connectFriend
   } = useApp();
   
   const [selectedConvId, setSelectedConvId] = useState<string>(() => {
@@ -152,8 +153,9 @@ export const MessagesView: React.FC = () => {
   };
 
   const filteredConversations = conversations.filter(c =>
-    c.participant.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
-    c.participant.username.toLowerCase().includes(searchFilter.toLowerCase())
+    (c.participant?.name || '').toLowerCase().includes(searchFilter.toLowerCase()) ||
+    (c.participant?.username || '').toLowerCase().includes(searchFilter.toLowerCase()) ||
+    (c.participant?.id || '').toLowerCase().includes(searchFilter.toLowerCase())
   );
 
   const isParticipantOnline = activeConv && onlineUserIds.includes(activeConv.participant.id);
@@ -453,7 +455,7 @@ export const MessagesView: React.FC = () => {
                   type="text"
                   value={userSearchQuery}
                   onChange={(e) => setUserSearchQuery(e.target.value)}
-                  placeholder="Search user..."
+                  placeholder="Search by Sphere ID (usr_...), username, or name..."
                   autoFocus
                   className="w-full bg-zinc-900 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500/50"
                 />
@@ -461,27 +463,45 @@ export const MessagesView: React.FC = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-              {searchedUsers.map((user) => (
-                <div
-                  key={user.id}
-                  onClick={() => handleStartChatWith(user)}
-                  className="flex items-center justify-between p-2.5 rounded-2xl hover:bg-white/5 cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={user.avatar}
-                      alt={user.username}
-                      className="w-10 h-10 rounded-full object-cover border border-white/10"
-                    />
-                    <div>
-                      <p className="text-xs font-bold text-white">{user.username}</p>
-                      <p className="text-[11px] text-zinc-400">{user.name}</p>
+              {searchedUsers.length > 0 ? (
+                searchedUsers.map((user) => (
+                  <div
+                    key={user.id}
+                    onClick={() => handleStartChatWith(user)}
+                    className="flex items-center justify-between p-2.5 rounded-2xl hover:bg-white/5 cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={user.avatar}
+                        alt={user.username}
+                        className="w-10 h-10 rounded-full object-cover border border-white/10"
+                      />
+                      <div>
+                        <p className="text-xs font-bold text-white">{user.username}</p>
+                        <p className="text-[11px] text-zinc-400">{user.name}</p>
+                        <p className="text-[10px] font-mono text-cyan-400/80 truncate max-w-[140px]">{user.id}</p>
+                      </div>
                     </div>
-                  </div>
 
-                  <span className="text-[11px] font-bold text-pink-400">Chat</span>
+                    <span className="text-[11px] font-bold text-pink-400">Chat</span>
+                  </div>
+                ))
+              ) : userSearchQuery.trim() ? (
+                <div className="p-4 text-center space-y-3">
+                  <p className="text-xs text-zinc-400">Friend not in local contacts list</p>
+                  <button
+                    onClick={async () => {
+                      const friend = await connectFriend(userSearchQuery.trim());
+                      if (friend) {
+                        handleStartChatWith(friend);
+                      }
+                    }}
+                    className="w-full py-2.5 bg-gradient-cosmic text-white text-xs font-bold rounded-xl active:scale-95 transition-all shadow-md flex items-center justify-center gap-1.5"
+                  >
+                    <span>Connect & Message &ldquo;{userSearchQuery.trim()}&rdquo;</span>
+                  </button>
                 </div>
-              ))}
+              ) : null}
             </div>
           </div>
         </div>

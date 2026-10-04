@@ -60,6 +60,57 @@ function setItem<T>(key: string, value: T): void {
   idbSet(key, value).catch(() => {});
 }
 
+const DEFAULT_COMMUNITY_USERS: StoredUser[] = [
+  {
+    id: 'usr_tanush',
+    username: 'tanush',
+    name: 'Tanush Shahi',
+    email: 'tanush@sphere.app',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+    bio: 'Founder of Social Sphere 🌌 Building the future of connected social worlds.',
+    followersCount: 1240,
+    followingCount: 180,
+    postsCount: 1,
+    isVerified: true
+  },
+  {
+    id: 'usr_alex',
+    username: 'alex_creator',
+    name: 'Alex Rivera',
+    email: 'alex@sphere.app',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+    bio: 'Visual artist & digital creator ✨ Exploring celestial aesthetics.',
+    followersCount: 950,
+    followingCount: 220,
+    postsCount: 1,
+    isVerified: true
+  },
+  {
+    id: 'usr_sophia',
+    username: 'sophia_celestial',
+    name: 'Sophia Chen',
+    email: 'sophia@sphere.app',
+    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80',
+    bio: 'Cosmic beats & stellar visuals 🎧 Stargazer & UI designer.',
+    followersCount: 1420,
+    followingCount: 310,
+    postsCount: 0,
+    isVerified: true
+  },
+  {
+    id: 'usr_liam',
+    username: 'liam_sound',
+    name: 'Liam Vance',
+    email: 'liam@sphere.app',
+    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80',
+    bio: 'Music producer & audio engineer 🎵 Ambient synth waves.',
+    followersCount: 880,
+    followingCount: 150,
+    postsCount: 0,
+    isVerified: true
+  }
+];
+
 export async function initLocalStore(): Promise<void> {
   const listKeys = [USERS_KEY, POSTS_KEY, STORIES_KEY, CONVERSATIONS_KEY, FOLLOWS_KEY, BLOCKS_KEY];
   const otherKeys = [CURRENT_USER_KEY, CURRENT_USER_ID_KEY];
@@ -81,6 +132,90 @@ export async function initLocalStore(): Promise<void> {
       localStorage.setItem(key, JSON.stringify(safeList));
     } catch {}
     idbSet(key, safeList).catch(() => {});
+  }
+
+  // Ensure default community creators exist in USERS_KEY so friend search always finds creators
+  const currentUsers = Array.isArray(memCache[USERS_KEY]) ? (memCache[USERS_KEY] as StoredUser[]) : [];
+  let updatedUsers = false;
+  for (const seed of DEFAULT_COMMUNITY_USERS) {
+    if (!currentUsers.some(u => u && (u.id === seed.id || (u.username && u.username.toLowerCase() === seed.username.toLowerCase())))) {
+      currentUsers.push(seed);
+      updatedUsers = true;
+    }
+  }
+  if (updatedUsers || currentUsers.length === 0) {
+    memCache[USERS_KEY] = currentUsers;
+    try {
+      localStorage.setItem(USERS_KEY, JSON.stringify(currentUsers));
+    } catch {}
+    idbSet(USERS_KEY, currentUsers).catch(() => {});
+  }
+
+  // Ensure initial welcome posts exist if POSTS_KEY is empty
+  const currentPosts = Array.isArray(memCache[POSTS_KEY]) ? (memCache[POSTS_KEY] as Post[]) : [];
+  if (currentPosts.length === 0) {
+    const welcomePost: Post = {
+      id: 'post_welcome_sphere',
+      user: {
+        id: 'usr_tanush',
+        username: 'tanush',
+        name: 'Tanush Shahi',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+        followersCount: 1240,
+        followingCount: 180,
+        postsCount: 1,
+        isVerified: true
+      },
+      media: [
+        {
+          id: 'med_welcome_1',
+          url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1080&auto=format&fit=crop&q=80',
+          type: 'image',
+          filter: 'normal'
+        },
+        {
+          id: 'med_welcome_2',
+          url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1080&auto=format&fit=crop&q=80',
+          type: 'image',
+          filter: 'celestial'
+        }
+      ],
+      caption: 'Welcome to Social Sphere! 🌌 Connect with friends worldwide using your unique Sphere ID.',
+      location: 'Cosmic Core Orbit',
+      songTitle: 'Starfall Reverie',
+      songArtist: 'Sphere Soundscapes',
+      songUrl: 'https://cdn.freesound.org/previews/612/612089_5674468-lq.mp3',
+      likesCount: 128,
+      isLiked: false,
+      isSaved: false,
+      comments: [
+        {
+          id: 'comm_welcome_1',
+          postId: 'post_welcome_sphere',
+          user: {
+            id: 'usr_alex',
+            username: 'alex_creator',
+            name: 'Alex Rivera',
+            avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+            followersCount: 950,
+            followingCount: 220,
+            postsCount: 1,
+            isVerified: true
+          },
+          text: 'The friend discovery radar and celestial vibes are next level! ✨',
+          createdAt: 'Just now',
+          likesCount: 12,
+          isLiked: false
+        }
+      ],
+      createdAt: new Date().toISOString()
+    };
+    currentPosts.push(welcomePost);
+    memCache[POSTS_KEY] = currentPosts;
+    try {
+      localStorage.setItem(POSTS_KEY, JSON.stringify(currentPosts));
+    } catch {}
+    idbSet(POSTS_KEY, currentPosts).catch(() => {});
   }
 
   for (const key of otherKeys) {
@@ -844,8 +979,10 @@ export const localStore = {
     },
 
     async search(query: string): Promise<{ users: User[] }> {
-      const q = query.trim().toLowerCase();
-      if (!q) return { users: [] };
+      const rawQ = (query || '').trim();
+      if (!rawQ) return { users: [] };
+      const cleanQ = rawQ.replace(/^@+/, '').toLowerCase();
+
       const users = getItem<StoredUser[]>(USERS_KEY, []);
       const currentId = getCurrentUserId();
       const blocked = currentId ? getBlockedIdsForUser(currentId) : new Set<string>();
@@ -854,8 +991,21 @@ export const localStore = {
         ? new Set(follows.filter(f => f.followerId === currentId).map(f => f.followingId))
         : new Set<string>();
 
-      const clean = users
-        .filter(u => (u.username.toLowerCase().includes(q) || u.name.toLowerCase().includes(q)) && !blocked.has(u.id))
+      const matched = users
+        .filter(u => {
+          if (!u || blocked.has(u.id)) return false;
+          const uid = (u.id || '').toLowerCase();
+          const uname = (u.username || '').toLowerCase();
+          const dname = (u.name || '').toLowerCase();
+          const uemail = (u.email || '').toLowerCase();
+
+          return (
+            uid.includes(cleanQ) ||
+            uname.includes(cleanQ) ||
+            dname.includes(cleanQ) ||
+            uemail.includes(cleanQ)
+          );
+        })
         .map(({ password: _, email: __, ...u }) => ({
           ...u,
           followersCount: follows.filter(f => f.followingId === u.id).length,
@@ -863,7 +1013,91 @@ export const localStore = {
           isFollowing: myFollowingSet.has(u.id)
         } as User));
 
-      return { users: clean };
+      // Rank exact ID or exact username match at the top
+      matched.sort((a, b) => {
+        const aExact = (a.id.toLowerCase() === cleanQ || a.username.toLowerCase() === cleanQ) ? 1 : 0;
+        const bExact = (b.id.toLowerCase() === cleanQ || b.username.toLowerCase() === cleanQ) ? 1 : 0;
+        return bExact - aExact;
+      });
+
+      return { users: matched };
+    },
+
+    async connectFriend(
+      idOrHandle: string,
+      options?: { name?: string; avatar?: string }
+    ): Promise<{ user: User }> {
+      const cleanTarget = (idOrHandle || '').trim().replace(/^@+/, '');
+      if (!cleanTarget) throw new Error('Invalid user ID or handle');
+
+      const users = getItem<StoredUser[]>(USERS_KEY, []);
+      const currentId = getCurrentUserId();
+
+      // Check if already exists by ID or username
+      let friend = users.find(u => 
+        (u.id && u.id.toLowerCase() === cleanTarget.toLowerCase()) ||
+        (u.username && u.username.toLowerCase() === cleanTarget.toLowerCase())
+      );
+
+      const follows = getFollows();
+
+      if (!friend) {
+        const isId = cleanTarget.startsWith('usr_');
+        const id = isId ? cleanTarget : `usr_${cleanTarget.toLowerCase()}`;
+        const username = isId ? cleanTarget.replace(/^usr_/, '') : cleanTarget;
+        const defaultAvatars = [
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+          'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80',
+          'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80'
+        ];
+        const avatar = options?.avatar || defaultAvatars[Math.abs(cleanTarget.split('').reduce((a, b) => a + b.charCodeAt(0), 0)) % defaultAvatars.length];
+        const name = options?.name || (username.charAt(0).toUpperCase() + username.slice(1));
+
+        friend = {
+          id,
+          username,
+          name,
+          avatar,
+          bio: 'Connected Friend on Social Sphere ✨',
+          followersCount: 1,
+          followingCount: 1,
+          postsCount: 0,
+          isVerified: false
+        };
+
+        users.push(friend);
+        setItem(USERS_KEY, users);
+      }
+
+      // Automatically follow friend
+      if (currentId && currentId !== friend.id) {
+        const alreadyFollows = follows.some(f => f.followerId === currentId && f.followingId === friend!.id);
+        if (!alreadyFollows) {
+          follows.push({
+            followerId: currentId,
+            followingId: friend.id,
+            createdAt: new Date().toISOString()
+          });
+          setFollows(follows);
+        }
+      }
+
+      const cleanUser: User = {
+        id: friend.id,
+        username: friend.username,
+        name: friend.name,
+        avatar: friend.avatar,
+        bio: friend.bio,
+        website: friend.website,
+        followersCount: follows.filter(f => f.followingId === friend!.id).length,
+        followingCount: follows.filter(f => f.followerId === friend!.id).length,
+        postsCount: friend.postsCount || 0,
+        isVerified: friend.isVerified,
+        isFollowing: true
+      };
+
+      return { user: cleanUser };
     }
   },
 
@@ -879,15 +1113,20 @@ export const localStore = {
     async getOrCreateConversation(recipientId: string): Promise<{ conversation: Conversation }> {
       const { user: me } = await localStore.auth.me();
       const users = getItem<StoredUser[]>(USERS_KEY, []);
-      const recipient = users.find(u => u.id === recipientId);
-      if (!recipient) throw new Error('Recipient not found');
+      let recipient = users.find(u => u.id === recipientId || (u.username && u.username.toLowerCase() === recipientId.toLowerCase()));
+
+      // Auto-connect if recipient is not yet in users
+      if (!recipient) {
+        const connected = await localStore.users.connectFriend(recipientId);
+        recipient = connected.user as StoredUser;
+      }
 
       const convs = getItem<Conversation[]>(CONVERSATIONS_KEY, []);
-      let conv = convs.find(c => c.participant.id === recipientId);
+      let conv = convs.find(c => c.participant.id === recipient!.id);
 
       if (!conv) {
         conv = {
-          id: `conv_${Date.now()}`,
+          id: `conv_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
           participant: recipient as User,
           messages: [],
           unreadCount: 0

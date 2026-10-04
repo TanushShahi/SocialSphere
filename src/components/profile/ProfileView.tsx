@@ -20,7 +20,8 @@ import {
   Share2,
   ShieldAlert,
   Globe,
-  Users
+  Users,
+  Copy
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { FollowListModal } from './FollowListModal';
@@ -82,6 +83,48 @@ export const ProfileView: React.FC = () => {
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 2500);
+  };
+
+  const [copiedId, setCopiedId] = useState(false);
+
+  const handleCopyId = () => {
+    if (!currentUser?.id) return;
+    try {
+      navigator.clipboard?.writeText(currentUser.id);
+      setCopiedId(true);
+      showToast(`Copied Sphere ID: ${currentUser.id} 📋`);
+      setTimeout(() => setCopiedId(false), 2000);
+    } catch {
+      showToast('Failed to copy ID');
+    }
+  };
+
+  const handleShareProfile = async () => {
+    if (!currentUser) return;
+    const origin = window.location.origin;
+    const pathname = window.location.pathname;
+    const connectUrl = `${origin}${pathname}?connect=true&id=${currentUser.id}&u=${encodeURIComponent(currentUser.username)}&n=${encodeURIComponent(currentUser.name)}&a=${encodeURIComponent(currentUser.avatar)}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${currentUser.name} on Social Sphere`,
+          text: `Connect with me on Social Sphere! My Sphere ID is ${currentUser.id}`,
+          url: connectUrl
+        });
+        showToast('Profile shared! 🚀');
+        return;
+      } catch {
+        // User cancelled or share dismissed
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(connectUrl);
+      showToast('Profile connect link copied! 📋 Send it to your friend');
+    } catch {
+      showToast('Could not copy link');
+    }
   };
 
   // Filter posts
@@ -261,7 +304,24 @@ export const ProfileView: React.FC = () => {
                       </span>
                     )}
                   </h2>
-                  <p className="text-xs text-zinc-400 font-medium">@{currentUser.username}</p>
+                  <div className="flex items-center justify-center sm:justify-start gap-2 mt-1 flex-wrap">
+                    <p className="text-xs text-zinc-400 font-medium">@{currentUser.username}</p>
+                    <span className="text-zinc-600">•</span>
+                    {/* Unique Sphere ID with 1-tap Copy */}
+                    <button
+                      onClick={handleCopyId}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-[11px] text-cyan-300 font-mono transition-all group/id active:scale-95 shadow-sm"
+                      title="Click to copy your unique Sphere ID to share with friends"
+                    >
+                      <span className="text-[10px] text-zinc-400 font-sans font-semibold">Sphere ID:</span>
+                      <span className="truncate max-w-[130px] sm:max-w-[200px]">{currentUser.id}</span>
+                      {copiedId ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 animate-scale-in" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5 text-zinc-400 group-hover/id:text-white flex-shrink-0" />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -272,13 +332,12 @@ export const ProfileView: React.FC = () => {
                     Edit Profile
                   </button>
                   <button 
-                    onClick={() => {
-                      navigator.clipboard?.writeText(window.location.href);
-                      showToast('Profile link copied! 📋');
-                    }}
-                    className="px-3.5 py-2 bg-white/5 hover:bg-white/10 text-xs font-semibold rounded-xl border border-white/10 transition-colors"
+                    onClick={handleShareProfile}
+                    className="px-3.5 py-2 bg-white/5 hover:bg-white/10 text-xs font-semibold rounded-xl border border-white/10 transition-colors flex items-center gap-1.5"
+                    title="Share profile connect link"
                   >
-                    Share
+                    <Share2 className="w-3.5 h-3.5 text-pink-400" />
+                    <span>Share</span>
                   </button>
                   <button
                     onClick={() => setIsBlockedModalOpen(true)}

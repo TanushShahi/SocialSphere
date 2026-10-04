@@ -13,12 +13,14 @@ export const SearchDrawer: React.FC = () => {
     toggleFollowUser,
     onlineUserIds,
     initiateCall,
-    currentUser
+    currentUser,
+    connectFriend
   } = useApp();
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('sphere_recent_searches');
@@ -27,6 +29,29 @@ export const SearchDrawer: React.FC = () => {
       return [];
     }
   });
+
+  const handleDirectConnect = async (targetIdOrHandle: string) => {
+    const clean = targetIdOrHandle.trim();
+    if (!clean) return;
+    setConnecting(true);
+    try {
+      const friend = await connectFriend(clean);
+      if (friend) {
+        saveRecent(friend.username);
+        setIsSearchOpen(false);
+        try {
+          await startConversationWithUser(friend);
+          setActiveTab('messages');
+        } catch {
+          setActiveTab('feed');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to connect friend:', err);
+    } finally {
+      setConnecting(false);
+    }
+  };
 
   useEffect(() => {
     if (!query.trim()) {
@@ -121,7 +146,7 @@ export const SearchDrawer: React.FC = () => {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search username, real name, or tags..."
+            placeholder="Search by Sphere ID (usr_...), username, or name..."
             autoFocus
             className="w-full bg-zinc-900/90 border border-white/10 rounded-2xl pl-10 pr-8 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30 transition-all"
           />
@@ -144,7 +169,7 @@ export const SearchDrawer: React.FC = () => {
         {query.trim().length > 0 ? (
           <div className="space-y-1.5">
             <h3 className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider px-2 mb-2">
-              Found Creators ({results.length})
+              Found Creators & Friends ({results.length})
             </h3>
 
             {results.length > 0 ? (
@@ -177,9 +202,15 @@ export const SearchDrawer: React.FC = () => {
                           {user.isVerified && <span className="text-cyan-400 text-xs font-bold">✓</span>}
                         </div>
                         <p className="text-[11px] text-zinc-400 truncate">{user.name}</p>
-                        <span className="text-[10px] text-zinc-500">
-                          {isOnline ? 'Active in orbit now' : 'Orbit explorer'}
-                        </span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[10px] font-mono text-cyan-400/90 font-medium truncate max-w-[130px]" title={user.id}>
+                            {user.id}
+                          </span>
+                          <span className="text-[10px] text-zinc-600">•</span>
+                          <span className="text-[10px] text-zinc-500">
+                            {isOnline ? 'In orbit now' : 'Orbit explorer'}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
@@ -229,9 +260,42 @@ export const SearchDrawer: React.FC = () => {
                 );
               })
             ) : !loading ? (
-              <div className="py-12 text-center space-y-2">
-                <Globe className="w-8 h-8 text-zinc-600 mx-auto" />
-                <p className="text-xs text-zinc-400">No creators found for &ldquo;{query}&rdquo;</p>
+              <div className="py-6 space-y-4">
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-950/40 via-zinc-900/80 to-pink-950/30 border border-pink-500/25 shadow-xl space-y-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-pink-500/10 border border-pink-500/30 flex items-center justify-center text-pink-400 flex-shrink-0">
+                      <UserPlus className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-white">Direct Friend Connect</h4>
+                      <p className="text-[10px] text-zinc-400">Connect with a friend across devices</p>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-zinc-300 leading-relaxed">
+                    Did your friend share their Sphere ID or handle? You can link directly with <span className="font-mono text-cyan-300 font-bold px-1.5 py-0.5 rounded bg-white/5 border border-white/10 break-all">{query.trim()}</span> to follow, message, and call them right now.
+                  </p>
+
+                  <button
+                    onClick={() => handleDirectConnect(query.trim())}
+                    disabled={connecting}
+                    className="w-full py-2.5 bg-gradient-cosmic hover:opacity-95 text-white text-xs font-bold rounded-xl shadow-lg shadow-pink-500/25 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    {connecting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4" />
+                        <span>Add & Chat with Friend</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="text-center text-zinc-500 text-[11px] space-y-1">
+                  <p>💡 Tip: You can search friends by their Sphere ID (usr_...),</p>
+                  <p>their @username, or full name.</p>
+                </div>
               </div>
             ) : null}
           </div>
@@ -275,7 +339,7 @@ export const SearchDrawer: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-16 space-y-3">
+              <div className="text-center py-10 space-y-3">
                 <Globe className="w-10 h-10 text-zinc-700 mx-auto" />
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-zinc-300">Worldwide Discovery</p>
@@ -283,6 +347,17 @@ export const SearchDrawer: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Quick Friend ID Connect Guide */}
+            <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 space-y-2 mt-4">
+              <div className="flex items-center gap-2 text-zinc-300">
+                <Radio className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="text-xs font-bold">Connect Across Devices</span>
+              </div>
+              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                Friends can copy their <span className="text-cyan-300 font-semibold font-mono">Sphere ID</span> from their Profile tab and send it to you. Paste any friend&apos;s ID in the search bar above to connect and start chatting instantly!
+              </p>
+            </div>
           </div>
         )}
       </div>
