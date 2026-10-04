@@ -168,37 +168,49 @@ usersRouter.get('/suggested', optionalAuth, (req: AuthRequest, res: Response): v
   }
 });
 
-// 5. Search Users
+// 5. Search registered users only
 usersRouter.get('/search', optionalAuth, (req: AuthRequest, res: Response): void => {
   try {
-    const q = req.query.q as string;
-    if (!q || !q.trim()) {
-      res.json({ users: [] });
-      return;
-    }
-
-    const currentUserId = req.user?.id;
-    const users = db.prepare(`
-      SELECT id, username, name, avatar, bio, is_verified
-      FROM users
-      WHERE username LIKE ? OR name LIKE ?
-      LIMIT 10
-    `).all(`%${q.trim()}%`, `%${q.trim()}%`) as any[];
-
+    const q = String(req.query.q || '').trim().replace(/^@+/, '').toLowerCase();
+    if (!q) { res.json({ users: [] }); return; }
+    const currentUserId = req.user?.id || '';
+    const contains = '%' + q + '%';
+    const startsWith = q + '%';
+    const users = db.prepare(
+      `SELECT id, username, name, avatar, bio, is_verified
+       FROM users
+       WHERE id != ? AND (LOWER(username) LIKE ? OR LOWER(name) LIKE ?)
+       ORDER BY CASE WHEN LOWER(username) = ? THEN 0 WHEN LOWER(username) LIKE ? THEN 1 ELSE 2 END, LOWER(username) ASC
+       LIMIT 20`
+    ).all(currentUserId, contains, contains, q, startsWith) as any[];
     const result = users.map(u => ({
-      id: u.id,
-      username: u.username,
-      name: u.name,
-      avatar: u.avatar,
-      bio: u.bio,
+      id: u.id, username: u.username, name: u.name, avatar: u.avatar, bio: u.bio,
       isVerified: Boolean(u.is_verified),
-      isFollowing: currentUserId
-        ? Boolean(db.prepare('SELECT 1 FROM followers WHERE follower_id = ? AND following_id = ?').get(currentUserId, u.id))
-        : false
+      isFollowing: currentUserId ? Boolean(db.prepare('SELECT 1 FROM followers WHERE follower_id = ? AND following_id = ?').get(currentUserId, u.id)) : false
     }));
-
     res.json({ users: result });
   } catch (err) {
+    console.error('Search users error:', err);
     res.status(500).json({ error: 'Failed to search users' });
+  }
+});
+
+// 6. Resolve an existing account by username or id. Never creates an account.
+usersRouter.post('/connect', requireAuth, (req: AuthRequest, res: Response): void => {
+  try {
+    const rawTarget = String(req.body?.idOrUsername || '').trim().replace(/^@+/, '').toLowerCase();
+    if (!rawTarget) { res.status(400).json({ error: 'Username or user ID is required' }); return; }
+    const currentUserId = req.user!.id;
+    const user = db.prepare(`SELECT id, username, name, avatar, bio, website, is_verified FROM users WHERE LOWER(id) = ? OR LOWER(username) = ? LIMIT 1`).get(rawTarget, rawTarget) as any;
+    if (!user) { res.status(404).json({ error: 'No registered SocialSphere account found for this username' }); return; }
+    if (user.id === currentUserId) { res.status(400).json({ error: 'You cannot connect to your own account' }); return; }
+    const followers = (db.prepare('SELECT COUNT(*) as c FROM followers WHERE following_id = ?').get(user.id) as any).c;
+    const following = (db.prepare('SELECT COUNT(*) as c FROM followers WHERE follower_id = ?').get(user.id) as any).c;
+    const postsCount = (db.prepare('SELECT COUNT(*) as c FROM posts WHERE user_id = ?').get(user.id) as any).c;
+    const isFollowing = Boolean(db.prepare('SELECT 1 FROM followers WHERE follower_id = ? AND following_id = ?').get(currentUserId, user.id));
+    res.json({ user: { id: user.id, username: user.username, name: user.name, avatar: user.avatar, bio: user.bio, website: user.website, followersCount: followers, followingCount: following, postsCount, isVerified: Boolean(user.is_verified), isFollowing } });
+  } catch (err) {
+    console.error('Connect user error:', err);
+    res.status(500).json({ error: 'Failed to find registered account' });
   }
 });
