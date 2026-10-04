@@ -1,5 +1,6 @@
 import { User, Post, Story, Reel, Conversation, NotificationItem, Comment, FollowRelation, BlockRelation } from '../types';
 import { idbGet, idbSet } from './indexedDB';
+import { cloudRegistry } from './cloudRegistry';
 
 const USERS_KEY = 'sphere_local_users';
 const POSTS_KEY = 'sphere_local_posts';
@@ -150,6 +151,33 @@ export async function initLocalStore(): Promise<void> {
     } catch {}
     idbSet(USERS_KEY, currentUsers).catch(() => {});
   }
+
+  // Merge users from the shared online Cloud Registry
+  cloudRegistry.fetchUsers().then(cloudUsers => {
+    if (Array.isArray(cloudUsers) && cloudUsers.length > 0) {
+      const stored = getItem<StoredUser[]>(USERS_KEY, []);
+      let hasNew = false;
+      for (const cu of cloudUsers) {
+        if (!stored.some(su => su && (su.id === cu.id || (su.username && su.username.toLowerCase() === cu.username.toLowerCase())))) {
+          stored.push(cu as StoredUser);
+          hasNew = true;
+        }
+      }
+      if (hasNew) {
+        setItem(USERS_KEY, stored);
+      }
+    }
+    // Also push the active local user to the cloud registry so they are discoverable across all devices
+    try {
+      const rawCurrent = localStorage.getItem(CURRENT_USER_KEY);
+      if (rawCurrent) {
+        const parsed = JSON.parse(rawCurrent);
+        if (parsed && parsed.id && parsed.username) {
+          cloudRegistry.syncUser(parsed).catch(() => {});
+        }
+      }
+    } catch {}
+  }).catch(() => {});
 
   // Ensure initial welcome posts exist if POSTS_KEY is empty
   const currentPosts = Array.isArray(memCache[POSTS_KEY]) ? (memCache[POSTS_KEY] as Post[]) : [];
@@ -342,6 +370,7 @@ export const localStore = {
       users.push(newUser);
       setItem(USERS_KEY, users);
       setCurrentUserId(newUser.id);
+      cloudRegistry.syncUser(newUser).catch(() => {});
       const token = `local_jwt_${newUser.id}_${Date.now()}`;
 
       const { password: _, email: __, ...userClean } = newUser;
@@ -366,6 +395,7 @@ export const localStore = {
       }
 
       setCurrentUserId(found.id);
+      cloudRegistry.syncUser(found).catch(() => {});
       const token = `local_jwt_${found.id}_${Date.now()}`;
       const { password: _, email: __, ...userClean } = found;
       return { user: userClean as User, token };
@@ -441,7 +471,13 @@ export const localStore = {
       );
 
       const filtered = posts
-        .filter(p => !blocked.has(p.user.id))
+        .filter(p => {
+          if (blocked.has(p.user.id)) return false;
+          if (p.user.isPrivate && p.user.id !== currentId && !followingSet.has(p.user.id)) {
+            return false;
+          }
+          return true;
+        })
         .map(p => ({
           ...p,
           user: {
@@ -637,7 +673,19 @@ export const localStore = {
       const currentId = getCurrentUserId();
       if (!currentId) return { stories };
       const blocked = getBlockedIdsForUser(currentId);
-      return { stories: stories.filter(s => !blocked.has(s.user.id)) };
+      const follows = getFollows();
+      const followingSet = new Set(
+        follows.filter(f => f.followerId === currentId).map(f => f.followingId)
+      );
+      return { 
+        stories: stories.filter(s => {
+          if (blocked.has(s.user.id)) return false;
+          if (s.user.isPrivate && s.user.id !== currentId && !followingSet.has(s.user.id)) {
+            return false;
+          }
+          return true;
+        })
+      };
     },
 
     async create(
@@ -799,6 +847,10 @@ export const localStore = {
       }
 
       const updated = { ...user, ...updates };
+      try {
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updated));
+      } catch {}
+      cloudRegistry.syncUser(updated).catch(() => {});
       return { user: updated };
     },
 
@@ -983,7 +1035,7 @@ export const localStore = {
       if (!rawQ) return { users: [] };
       const cleanQ = rawQ.replace(/^@+/, '').toLowerCase();
 
-      const users = getItem<StoredUser[]>(USERS_KEY, []);
+      let users = getItem<StoredUser[]>(USERS_KEY, []);
       const currentId = getCurrentUserId();
       const blocked = currentId ? getBlockedIdsForUser(currentId) : new Set<string>();
       const follows = getFollows();
@@ -991,7 +1043,7 @@ export const localStore = {
         ? new Set(follows.filter(f => f.followerId === currentId).map(f => f.followingId))
         : new Set<string>();
 
-      const matched = users
+      let matched = users
         .filter(u => {
           if (!u || blocked.has(u.id)) return false;
           const uid = (u.id || '').toLowerCase();
@@ -1005,22 +1057,49 @@ export const localStore = {
             dname.includes(cleanQ) ||
             uemail.includes(cleanQ)
           );
-        })
-        .map(({ password: _, email: __, ...u }) => ({
-          ...u,
-          followersCount: follows.filter(f => f.followingId === u.id).length,
-          followingCount: follows.filter(f => f.followerId === u.id).length,
-          isFollowing: myFollowingSet.has(u.id)
-        } as User));
+        });
+
+      // Always query the Cloud Registry to discover friends registered across any phone or computer!
+      try {
+        const cloudMatches = await cloudRegistry.searchCloud(cleanQ);
+        if (cloudMatches && cloudMatches.length > 0) {
+          let updated = false;
+          for (const cm of cloudMatches) {
+            if (!users.some(u => u && (u.id === cm.id || u.username.toLowerCase() === cm.username.toLowerCase()))) {
+              users.push(cm as StoredUser);
+              matched.push(cm as StoredUser);
+              updated = true;
+            } else {
+              const existing = users.find(u => u && (u.id === cm.id || u.username.toLowerCase() === cm.username.toLowerCase()));
+              if (existing && !matched.some(m => m.id === existing.id)) {
+                matched.push(existing);
+              }
+            }
+          }
+          if (updated) {
+            setItem(USERS_KEY, users);
+          }
+        }
+      } catch (err) {
+        console.warn('[CloudRegistry] Live search fallback warning:', err);
+      }
+
+      const clean = matched.map(({ password: _, email: __, ...u }) => ({
+        ...u,
+        followersCount: follows.filter(f => f.followingId === u.id).length || u.followersCount || 0,
+        followingCount: follows.filter(f => f.followerId === u.id).length || u.followingCount || 0,
+        isFollowing: myFollowingSet.has(u.id),
+        isPrivate: Boolean(u.isPrivate)
+      } as User));
 
       // Rank exact ID or exact username match at the top
-      matched.sort((a, b) => {
+      clean.sort((a, b) => {
         const aExact = (a.id.toLowerCase() === cleanQ || a.username.toLowerCase() === cleanQ) ? 1 : 0;
         const bExact = (b.id.toLowerCase() === cleanQ || b.username.toLowerCase() === cleanQ) ? 1 : 0;
         return bExact - aExact;
       });
 
-      return { users: matched };
+      return { users: clean };
     },
 
     async connectFriend(

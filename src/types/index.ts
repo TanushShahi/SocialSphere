@@ -10,6 +10,8 @@ export interface User {
   postsCount: number;
   isVerified?: boolean;
   isFollowing?: boolean;
+  isPrivate?: boolean;
+  isFollowRequested?: boolean;
   following?: string[];
   followers?: string[];
   blockedUserIds?: string[];

@@ -106,6 +106,9 @@ interface AppContextType {
   setActivePlayingPostId: (id: string | null) => void;
   refreshData: () => Promise<void>;
   connectFriend: (idOrHandle: string, options?: { name?: string; avatar?: string }) => Promise<User | null>;
+  viewingUser: User | null;
+  openUserProfile: (user: User) => void;
+  closeUserProfile: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -168,6 +171,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [shareItem, setShareItem] = useState<ShareItem | null>(null);
   const openShareModal = (item: ShareItem) => setShareItem(item);
   const closeShareModal = () => setShareItem(null);
+
+  // User Profile Modal (Instagram-style private/public profile view)
+  const [viewingUser, setViewingUser] = useState<User | null>(null);
+  const openUserProfile = (user: User) => setViewingUser(user);
+  const closeUserProfile = () => setViewingUser(null);
 
   // Calling & Real-Time Presence
   const [callSession, setCallSession] = useState<CallSession | null>(null);
@@ -784,6 +792,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           followingCount: res.isFollowing ? prev.followingCount + 1 : Math.max(0, prev.followingCount - 1)
         } : null);
       }
+      setViewingUser(prev => prev && prev.id === userId ? {
+        ...prev,
+        isFollowing: res.isFollowing,
+        followersCount: res.isFollowing ? (prev.followersCount || 0) + 1 : Math.max(0, (prev.followersCount || 1) - 1)
+      } : prev);
       return res.isFollowing;
     } catch (err) {
       console.error('Follow toggle error:', err);
@@ -920,6 +933,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setActivePlayingPostId,
         refreshData,
         connectFriend,
+        viewingUser,
+        openUserProfile,
+        closeUserProfile,
       }}
     >
       {children}

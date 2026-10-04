@@ -19,6 +19,7 @@ import { PostDetailModal } from './components/feed/PostDetailModal';
 import { CallModal } from './components/calling/CallModal';
 import { InstallAppModal } from './components/navigation/InstallAppModal';
 import { ShareSheetModal } from './components/common/ShareSheetModal';
+import { UserProfileModal } from './components/profile/UserProfileModal';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 const AppContent: React.FC = () => {
@@ -31,7 +32,9 @@ const AppContent: React.FC = () => {
     acceptIncomingCall,
     isInstallModalOpen,
     setIsInstallModalOpen,
-    setIsCreatePostOpen
+    setIsCreatePostOpen,
+    viewingUser,
+    closeUserProfile
   } = useApp();
 
   // If user is not authenticated, display the full Instagram Auth experience
@@ -70,6 +73,7 @@ const AppContent: React.FC = () => {
       <CallModal session={callSession} onEndCall={endCall} onAcceptCall={acceptIncomingCall} />
       <InstallAppModal isOpen={isInstallModalOpen} onClose={() => setIsInstallModalOpen(false)} />
       <ShareSheetModal />
+      <UserProfileModal user={viewingUser} isOpen={Boolean(viewingUser)} onClose={closeUserProfile} />
     </div>
   );
 };

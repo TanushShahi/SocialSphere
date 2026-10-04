@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, X, Clock, Loader2, Globe, Radio, MessageCircle, Phone, Video, UserPlus, Check } from 'lucide-react';
+import { Search, X, Clock, Loader2, Globe, Radio, MessageCircle, Phone, Video, UserPlus, Check, Lock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
 import { User } from '../../types';
@@ -14,7 +14,8 @@ export const SearchDrawer: React.FC = () => {
     onlineUserIds,
     initiateCall,
     currentUser,
-    connectFriend
+    connectFriend,
+    openUserProfile
   } = useApp();
 
   const [query, setQuery] = useState('');
@@ -180,8 +181,8 @@ export const SearchDrawer: React.FC = () => {
                 return (
                   <div
                     key={user.id}
-                    onClick={() => handleSelectUser(user)}
-                    className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.02] hover:bg-white/[0.07] border border-white/5 cursor-pointer transition-all group"
+                    onClick={() => openUserProfile(user)}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 cursor-pointer transition-all gap-3 group shadow-sm"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       {/* Avatar with Live Pulse */}
@@ -197,9 +198,22 @@ export const SearchDrawer: React.FC = () => {
                       </div>
 
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-xs font-bold truncate text-white">{user.username}</span>
                           {user.isVerified && <span className="text-cyan-400 text-xs font-bold">✓</span>}
+                          
+                          {/* Instagram-style Privacy Badge */}
+                          {user.isPrivate ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-bold">
+                              <Lock className="w-2.5 h-2.5" />
+                              <span>Private</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold">
+                              <Globe className="w-2.5 h-2.5" />
+                              <span>Public</span>
+                            </span>
+                          )}
                         </div>
                         <p className="text-[11px] text-zinc-400 truncate">{user.name}</p>
                         <div className="flex items-center gap-1.5 mt-0.5">
@@ -214,10 +228,47 @@ export const SearchDrawer: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-1.5">
+                    {/* Actions: Explicit Chat & Follow Buttons */}
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
                       {!isSelf && (
                         <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectUser(user);
+                            }}
+                            className="px-2.5 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 text-[11px] font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
+                            title="Chat & Message Friend"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            <span>Chat</span>
+                          </button>
+
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const nextFollowing = await toggleFollowUser(user.id);
+                              setResults(prev => prev.map(u => u.id === user.id ? { ...u, isFollowing: nextFollowing } : u));
+                            }}
+                            className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition-all flex items-center gap-1.5 active:scale-95 shadow-sm ${
+                              user.isFollowing
+                                ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700 border border-white/10'
+                                : 'bg-gradient-cosmic text-white shadow-pink-500/20 hover:opacity-95'
+                            }`}
+                          >
+                            {user.isFollowing ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>Following</span>
+                              </>
+                            ) : (
+                              <>
+                                <UserPlus className="w-3.5 h-3.5" />
+                                <span>Follow</span>
+                              </>
+                            )}
+                          </button>
+
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -238,20 +289,6 @@ export const SearchDrawer: React.FC = () => {
                             title="Start Video Call"
                           >
                             <Video className="w-3.5 h-3.5" />
-                          </button>
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFollowUser(user.id);
-                            }}
-                            className={`px-3 py-1 text-[11px] font-bold rounded-xl transition-all ${
-                              user.isFollowing
-                                ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                                : 'bg-gradient-cosmic text-white shadow-md shadow-pink-500/20 hover:opacity-90'
-                            }`}
-                          >
-                            {user.isFollowing ? 'Following' : 'Follow'}
                           </button>
                         </>
                       )}
