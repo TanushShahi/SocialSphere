@@ -100,6 +100,8 @@ interface AppContextType {
   getBlockedUsers: () => Promise<User[]>;
   unreadNotificationsCount: number;
   unreadMessagesCount: number;
+  activePlayingPostId: string | null;
+  setActivePlayingPostId: (id: string | null) => void;
   refreshData: () => Promise<void>;
 }
 
@@ -166,6 +168,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Calling & Real-Time Presence
   const [callSession, setCallSession] = useState<CallSession | null>(null);
   const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
+
+  // Feed & Full-screen Audio State
+  const [activePlayingPostId, setActivePlayingPostId] = useState<string | null>(null);
+
+  // Automatically pause feed audio if stories are open, leaving feed tab, or active calls
+  useEffect(() => {
+    if (activeStoryIndex !== null || activeTab !== 'feed' || callSession !== null || isCreatePostOpen) {
+      setActivePlayingPostId(null);
+    }
+  }, [activeStoryIndex, activeTab, callSession, isCreatePostOpen]);
 
   // Socket.IO real-time event subscriptions
   useEffect(() => {
@@ -861,6 +873,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         getBlockedUsers,
         unreadNotificationsCount,
         unreadMessagesCount,
+        activePlayingPostId,
+        setActivePlayingPostId,
         refreshData,
       }}
     >

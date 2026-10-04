@@ -41,7 +41,12 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
     toggleBlockUser,
     deletePost,
     currentUser,
-    openShareModal
+    openShareModal,
+    activePlayingPostId,
+    setActivePlayingPostId,
+    activeStoryIndex,
+    activeTab,
+    selectedPostForDetail
   } = useApp();
 
   const [currentMediaIdx, setCurrentMediaIdx] = useState(0);
@@ -54,37 +59,94 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [copiedLink, setCopiedLink] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
 
+  const cardRef = useRef<HTMLElement | null>(null);
   const lastTapRef = useRef<number>(0);
   const commentInputRef = useRef<HTMLInputElement>(null);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+
+  const isThisPostPlaying = activePlayingPostId === post.id;
+
+  // Manage audio playback: play when active & in view, pause if stories open or tab changed
+  useEffect(() => {
+    if (!post.songUrl) return;
+
+    const shouldPlay = isThisPostPlaying && 
+                       activeStoryIndex === null && 
+                       activeTab === 'feed' && 
+                       selectedPostForDetail === null;
+
+    if (shouldPlay) {
+      if (!audioPlayerRef.current) {
+        const a = new Audio(post.songUrl);
+        a.volume = 0.55;
+        a.loop = true;
+        a.onended = () => {
+          setIsPlayingAudio(false);
+          setActivePlayingPostId(null);
+        };
+        audioPlayerRef.current = a;
+      }
+      audioPlayerRef.current.play().then(() => {
+        setIsPlayingAudio(true);
+      }).catch(() => {
+        setIsPlayingAudio(false);
+      });
+    } else {
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+      }
+      setIsPlayingAudio(false);
+    }
+  }, [isThisPostPlaying, post.songUrl, activeStoryIndex, activeTab, selectedPostForDetail]);
 
   useEffect(() => {
     return () => {
       if (audioPlayerRef.current) {
         audioPlayerRef.current.pause();
+        audioPlayerRef.current = null;
       }
     };
   }, []);
+
+  // IntersectionObserver: automatically start song when post enters full view, stop when out of view
+  useEffect(() => {
+    if (!post.songUrl) return;
+    const el = cardRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          // When card is substantially in view (> 55% in viewport)
+          if (entry.intersectionRatio >= 0.55) {
+            if (activeStoryIndex === null && activeTab === 'feed' && selectedPostForDetail === null) {
+              setActivePlayingPostId(post.id);
+            }
+          } else if (entry.intersectionRatio < 0.35) {
+            // When scrolled out of view, stop audio if this was the playing post
+            if (activePlayingPostId === post.id) {
+              setActivePlayingPostId(null);
+            }
+          }
+        });
+      },
+      {
+        threshold: [0.3, 0.55, 0.8]
+      }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [post.id, post.songUrl, activeStoryIndex, activeTab, selectedPostForDetail, activePlayingPostId]);
 
   const toggleAudio = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!post.songUrl) return;
 
-    if (isPlayingAudio) {
-      if (audioPlayerRef.current) {
-        audioPlayerRef.current.pause();
-      }
-      setIsPlayingAudio(false);
+    if (isThisPostPlaying) {
+      setActivePlayingPostId(null);
     } else {
-      if (!audioPlayerRef.current) {
-        const a = new Audio(post.songUrl);
-        a.volume = 0.55;
-        a.loop = true;
-        a.onended = () => setIsPlayingAudio(false);
-        audioPlayerRef.current = a;
-      }
-      audioPlayerRef.current.play().catch(() => {});
-      setIsPlayingAudio(true);
+      setActivePlayingPostId(post.id);
     }
   };
 
@@ -178,7 +240,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const currentMedia = post.media[currentMediaIdx] || post.media[0];
 
   return (
-    <article className="relative max-w-[480px] mx-auto w-full mb-6 sm:mb-8 group/card select-none">
+    <article ref={cardRef} className="relative max-w-[480px] mx-auto w-full mb-6 sm:mb-8 group/card select-none">
       {/* Dynamic Ambient Audio Glow behind Card */}
       {isPlayingAudio && <div className="ambient-audio-glow"></div>}
 

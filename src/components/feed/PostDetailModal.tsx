@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   X, 
   Heart, 
@@ -33,7 +33,8 @@ export const PostDetailModal: React.FC = () => {
     toggleBlockUser,
     deletePost,
     currentUser,
-    openShareModal
+    openShareModal,
+    activeStoryIndex
   } = useApp();
 
   const [commentText, setCommentText] = useState('');
@@ -49,6 +50,41 @@ export const PostDetailModal: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const touchStartX = useRef(0);
   const touchDeltaX = useRef(0);
+
+  // Auto-play song when coming into full-screen view; stop when closed or viewing stories
+  useEffect(() => {
+    if (!post?.songUrl) return;
+
+    if (activeStoryIndex !== null) {
+      if (audioRef.current) audioRef.current.pause();
+      setIsPlayingAudio(false);
+      return;
+    }
+
+    if (!audioRef.current) {
+      const a = new Audio(post.songUrl);
+      a.volume = 0.6;
+      a.loop = true;
+      a.onended = () => setIsPlayingAudio(false);
+      audioRef.current = a;
+    } else {
+      audioRef.current.src = post.songUrl;
+    }
+
+    audioRef.current.play().then(() => {
+      setIsPlayingAudio(true);
+    }).catch(() => {
+      setIsPlayingAudio(false);
+    });
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      setIsPlayingAudio(false);
+    };
+  }, [post?.id, post?.songUrl, activeStoryIndex]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -84,7 +120,7 @@ export const PostDetailModal: React.FC = () => {
   };
 
   const toggleAudio = () => {
-    if (!post.songUrl) return;
+    if (!post?.songUrl) return;
     if (isPlayingAudio) {
       if (audioRef.current) audioRef.current.pause();
       setIsPlayingAudio(false);
