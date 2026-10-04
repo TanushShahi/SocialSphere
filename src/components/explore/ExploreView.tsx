@@ -141,6 +141,7 @@ export const ExploreView: React.FC = () => {
   // Instagram-style account & friend search state
   const [userResults, setUserResults] = useState<User[]>([]);
   const [userLoading, setUserLoading] = useState(false);
+  const [userSearchError, setUserSearchError] = useState('');
   const [connecting, setConnecting] = useState(false);
   const [searchMode, setSearchMode] = useState<'accounts' | 'media'>('accounts');
 
@@ -152,11 +153,13 @@ export const ExploreView: React.FC = () => {
     const q = searchQuery.trim();
     if (!q) {
       setUserResults([]);
+      setUserSearchError('');
       setUserLoading(false);
       return;
     }
 
     setUserLoading(true);
+    setUserSearchError('');
     const timeout = setTimeout(async () => {
       try {
         const res = await api.users.search(q);
@@ -165,9 +168,13 @@ export const ExploreView: React.FC = () => {
         // any username, including names that were previously used by mock data.
         const clean = (res.users || []).filter(Boolean);
         setUserResults(clean);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Explore user search error:', err);
         setUserResults([]);
+        setUserSearchError(
+          err?.message ||
+          'Unable to reach the SocialSphere backend. Check VITE_API_URL and the backend deployment.'
+        );
       } finally {
         setUserLoading(false);
       }
@@ -480,9 +487,13 @@ export const ExploreView: React.FC = () => {
               {/* Only registered accounts are shown. No account is created from a search string. */}
               {userResults.length === 0 && !userLoading && (
                 <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 text-center">
-                  <div className="text-sm font-bold text-white">No registered account found</div>
+                  <div className="text-sm font-bold text-white">
+                    {userSearchError ? 'Account search is unavailable' : 'No registered account found'}
+                  </div>
                   <p className="text-[11px] text-zinc-400 mt-1">
-                    SocialSphere only lets you follow or message accounts that have actually registered.
+                    {userSearchError
+                      ? userSearchError
+                      : 'SocialSphere searches the real registered-account database only.'}
                   </p>
                 </div>
               )}
