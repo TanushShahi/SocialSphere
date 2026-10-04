@@ -10,5 +10,11 @@ services:
         value: 5000
       - key: NODE_ENV
         value: production
+      - key: PERSISTENT_DATA_DIR
+        value: /var/data
       - key: JWT_SECRET
         generateValue: true
+    disk:
+      name: social-sphere-data
+      mountPath: /var/data
+      sizeGB: 1
