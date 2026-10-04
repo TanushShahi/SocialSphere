@@ -1011,64 +1011,44 @@ export const localStore = {
 
     async connectFriend(
       idOrHandle: string,
-      options?: { name?: string; avatar?: string }
+      _options?: { name?: string; avatar?: string }
     ): Promise<{ user: User }> {
-      const cleanTarget = (idOrHandle || '').trim().replace(/^@+/, '');
+      const cleanTarget = (idOrHandle || '').trim().replace(/^@+/, '').toLowerCase();
       if (!cleanTarget) throw new Error('Invalid user ID or handle');
 
       const users = getItem<StoredUser[]>(USERS_KEY, []);
       const currentId = getCurrentUserId();
-
-      // Check if already exists by ID or username
-      let friend = users.find(u => 
-        (u.id && u.id.toLowerCase() === cleanTarget.toLowerCase()) ||
-        (u.username && u.username.toLowerCase() === cleanTarget.toLowerCase())
+      let friend = users.find(u =>
+        (u.id && u.id.toLowerCase() === cleanTarget) ||
+        (u.username && u.username.toLowerCase() === cleanTarget)
       );
 
-      const follows = getFollows();
+      // Discover only accounts that already exist in the shared registry.
+      if (!friend) {
+        try {
+          const cloudMatches = await cloudRegistry.searchCloud(cleanTarget);
+          friend = cloudMatches.find(u =>
+            u && ((u.id || '').toLowerCase() === cleanTarget || (u.username || '').toLowerCase() === cleanTarget)
+          ) as StoredUser | undefined;
+
+          if (friend && !users.some(u => u && u.id === friend!.id)) {
+            users.push(friend);
+            setItem(USERS_KEY, users);
+          }
+        } catch {}
+      }
 
       if (!friend) {
-        const isId = cleanTarget.startsWith('usr_');
-        const id = isId ? cleanTarget : `usr_${cleanTarget.toLowerCase()}`;
-        const username = isId ? cleanTarget.replace(/^usr_/, '') : cleanTarget;
-        const defaultAvatars = [
-          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-          'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80',
-          'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80'
-        ];
-        const avatar = options?.avatar || defaultAvatars[Math.abs(cleanTarget.split('').reduce((a, b) => a + b.charCodeAt(0), 0)) % defaultAvatars.length];
-        const name = options?.name || (username.charAt(0).toUpperCase() + username.slice(1));
-
-        friend = {
-          id,
-          username,
-          name,
-          avatar,
-          bio: 'Connected Friend on Social Sphere ✨',
-          followersCount: 1,
-          followingCount: 1,
-          postsCount: 0,
-          isVerified: false
-        };
-
-        users.push(friend);
-        setItem(USERS_KEY, users);
-        cloudRegistry.syncUser(friend).catch(() => {});
+        throw new Error('No registered SocialSphere account found for this username');
+      }
+      if (currentId && currentId === friend.id) {
+        throw new Error('You cannot connect to your own account');
       }
 
-      // Automatically follow friend
-      if (currentId && currentId !== friend.id) {
-        const alreadyFollows = follows.some(f => f.followerId === currentId && f.followingId === friend!.id);
-        if (!alreadyFollows) {
-          follows.push({
-            followerId: currentId,
-            followingId: friend.id,
-            createdAt: new Date().toISOString()
-          });
-          setFollows(follows);
-        }
-      }
+      const follows = getFollows();
+      const alreadyFollows = currentId
+        ? follows.some(f => f.followerId === currentId && f.followingId === friend!.id)
+        : false;
 
       const cleanUser: User = {
         id: friend.id,
@@ -1077,16 +1057,15 @@ export const localStore = {
         avatar: friend.avatar,
         bio: friend.bio,
         website: friend.website,
-        followersCount: follows.filter(f => f.followingId === friend!.id).length,
-        followingCount: follows.filter(f => f.followerId === friend!.id).length,
+        followersCount: follows.filter(f => f.followingId === friend!.id).length || friend.followersCount || 0,
+        followingCount: follows.filter(f => f.followerId === friend!.id).length || friend.followingCount || 0,
         postsCount: friend.postsCount || 0,
-        isVerified: friend.isVerified,
-        isFollowing: true
+        isVerified: Boolean(friend.isVerified),
+        isFollowing: alreadyFollows
       };
 
       return { user: cleanUser };
-    }
-  },
+    }  },
 
   messages: {
     async getConversations(): Promise<{ conversations: Conversation[] }> {
