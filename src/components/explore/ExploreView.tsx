@@ -183,23 +183,16 @@ export const ExploreView: React.FC = () => {
 
   const handleAddAndFollow = async (target: string) => {
     const clean = target.trim().replace(/^@+/, '');
-    if (!clean) return;
+    if (!clean || !currentUser) return;
     setConnecting(true);
     try {
-      const friend = await connectFriend(clean);
-      if (friend) {
-        const res = await api.users.search(clean);
-        const MOCK_BLACKLIST = new Set([
-          'alex_creator', 'sophia_celestial', 'liam_sound', 
-          'usr_alex', 'usr_sophia', 'usr_liam', 'tanush', 'usr_tanush'
-        ]);
-        const cleanUsers = (res.users || []).filter(
-          u => u && !MOCK_BLACKLIST.has((u.username || '').toLowerCase())
-        );
-        setUserResults(cleanUsers.length > 0 ? cleanUsers : [{ ...friend, isFollowing: true }]);
-      }
+      const result = await api.users.connectFriend(clean);
+      const friend = result?.user;
+      if (!friend) return;
+      const nextState = friend.isFollowing ? true : await toggleFollowUser(friend.id);
+      setUserResults(prev => prev.map(u => u.id === friend.id ? { ...u, isFollowing: nextState } : u));
     } catch (err) {
-      console.error('Failed to add and follow:', err);
+      console.error('Failed to follow registered account:', err);
     } finally {
       setConnecting(false);
     }
@@ -207,19 +200,19 @@ export const ExploreView: React.FC = () => {
 
   const handleAddAndChat = async (target: string) => {
     const clean = target.trim().replace(/^@+/, '');
-    if (!clean) return;
+    if (!clean || !currentUser) return;
     setConnecting(true);
     try {
-      const friend = await connectFriend(clean);
-      if (friend) {
-        const convId = await startConversationWithUser(friend);
-        try {
-          sessionStorage.setItem('sphere_active_conv_id', convId);
-        } catch {}
+      const result = await api.users.connectFriend(clean);
+      const friend = result?.user;
+      if (!friend) return;
+      const convId = await startConversationWithUser(friend);
+      if (convId) {
+        try { sessionStorage.setItem('sphere_active_conv_id', convId); } catch {}
         setActiveTab('messages');
       }
     } catch (err) {
-      console.error('Failed to add and chat:', err);
+      console.error('Failed to chat with registered account:', err);
     } finally {
       setConnecting(false);
     }
@@ -487,59 +480,13 @@ export const ExploreView: React.FC = () => {
 
           {searchMode === 'accounts' ? (
             <div className="space-y-3">
-              {/* Instagram Direct Connect & Add Card when no exact local match yet */}
-              {!exactMatch && (
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-950/40 via-zinc-900/90 to-pink-950/40 border border-pink-500/30 shadow-xl space-y-3.5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-gradient-cosmic p-[2px] flex-shrink-0 shadow-lg shadow-pink-500/20">
-                      <div className="w-full h-full rounded-full bg-zinc-900 flex items-center justify-center font-extrabold text-white text-base">
-                        @{cleanQuery.charAt(0).toUpperCase()}
-                      </div>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-sm font-bold text-white truncate">@{cleanQuery}</span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/15 text-pink-300 font-semibold border border-pink-500/30">
-                          Friend
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-400 truncate">
-                        Connect & follow @{cleanQuery} directly across devices
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <button
-                      onClick={() => handleAddAndFollow(cleanQuery)}
-                      disabled={connecting}
-                      className="py-2.5 px-3 bg-gradient-cosmic hover:opacity-95 text-white text-xs font-bold rounded-xl shadow-lg shadow-pink-500/25 active:scale-95 transition-all flex items-center justify-center gap-1.5"
-                    >
-                      {connecting ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <>
-                          <UserPlus className="w-3.5 h-3.5" />
-                          <span>➕ Follow</span>
-                        </>
-                      )}
-                    </button>
-
-                    <button
-                      onClick={() => handleAddAndChat(cleanQuery)}
-                      disabled={connecting}
-                      className="py-2.5 px-3 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-xs font-bold rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1.5"
-                    >
-                      {connecting ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <>
-                          <MessageCircle className="w-3.5 h-3.5" />
-                          <span>💬 Chat</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
+              {/* Only registered accounts are shown. No account is created from a search string. */}
+              {userResults.length === 0 && !userLoading && (
+                <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 text-center">
+                  <div className="text-sm font-bold text-white">No registered account found</div>
+                  <p className="text-[11px] text-zinc-400 mt-1">
+                    SocialSphere only lets you follow or message accounts that have actually registered.
+                  </p>
                 </div>
               )}
 
