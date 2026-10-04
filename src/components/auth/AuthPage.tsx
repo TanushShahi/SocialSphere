@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Sparkles, AlertCircle, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
+import { Eye, EyeOff, Sparkles, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const AuthPage: React.FC = () => {
@@ -70,23 +70,6 @@ export const AuthPage: React.FC = () => {
       await register(username, email, pwd, name);
     } catch (err: any) {
       setErrorMsg(err.message || 'Registration failed. Try a different username.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Instant 1-Tap Demo Testing
-  const handleQuickDemo = async (demoUser: { u: string; e: string; n: string }) => {
-    setErrorMsg('');
-    setLoading(true);
-    try {
-      await login(demoUser.u, 'password123');
-    } catch {
-      try {
-        await register(demoUser.u, demoUser.e, 'password123', demoUser.n);
-      } catch (regErr: any) {
-        setErrorMsg(regErr.message || 'Demo login failed');
-      }
     } finally {
       setLoading(false);
     }
@@ -173,42 +156,6 @@ export const AuthPage: React.FC = () => {
                 <span className="leading-tight">{errorMsg}</span>
               </div>
             )}
-
-            {/* Fast 1-Tap Access Section */}
-            <div className="w-full mb-5 p-3 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2">
-              <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
-                <span className="flex items-center gap-1.5 text-zinc-300">
-                  <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                  Instant 1-Tap Demo Access:
-                </span>
-                <span className="text-[10px] text-pink-400 font-bold">No typing needed</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemo({ u: 'tanush', e: 'tanush@sphere.app', n: 'Tanush Shahi' })}
-                  className="py-2 px-2.5 bg-white/[0.06] hover:bg-white/[0.12] active:scale-95 text-xs text-white border border-white/10 rounded-xl truncate text-center font-bold transition-all shadow-sm flex items-center justify-center gap-1.5"
-                >
-                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                  Tanush (Owner)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemo({ u: 'alex_creator', e: 'alex@sphere.app', n: 'Alex Rivera' })}
-                  className="py-2 px-2.5 bg-white/[0.06] hover:bg-white/[0.12] active:scale-95 text-xs text-white border border-white/10 rounded-xl truncate text-center font-bold transition-all shadow-sm flex items-center justify-center gap-1.5"
-                >
-                  <span className="w-2 h-2 rounded-full bg-pink-400"></span>
-                  Alex (Creator)
-                </button>
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="w-full flex items-center gap-3 mb-4">
-              <div className="flex-1 h-[1px] bg-white/10"></div>
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">or continue with credentials</span>
-              <div className="flex-1 h-[1px] bg-white/10"></div>
-            </div>
 
             {activeTab === 'login' ? (
               /* ================= LOG IN FORM ================= */

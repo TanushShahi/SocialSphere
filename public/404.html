@@ -10,7 +10,6 @@
         var search = window.location.search || '';
         var hash = window.location.hash || '';
 
-        // If path is lowercase /socialsphere or missing trailing slash /SocialSphere
         if (path.toLowerCase().indexOf('/socialsphere') === 0) {
           window.location.replace(origin + '/SocialSphere/' + search + hash);
           return;

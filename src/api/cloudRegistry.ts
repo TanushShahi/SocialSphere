@@ -30,7 +30,7 @@ export const cloudRegistry = {
         avatar: user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
         bio: user.bio,
         website: user.website,
-        isVerified: user.isVerified ?? true,
+        isVerified: Boolean(user.isVerified),
         isPrivate: Boolean(user.isPrivate),
         followersCount: user.followersCount ?? 0,
         followingCount: user.followingCount ?? 0,
@@ -58,11 +58,17 @@ export const cloudRegistry = {
   // Fetch all registered users from the shared online registry
   async fetchUsers(): Promise<CloudUserPayload[]> {
     try {
-      const res = await fetch(CLOUD_REGISTRY_URL, { cache: 'no-cache' });
+      const url = `${CLOUD_REGISTRY_URL}?_cb=${Date.now()}`;
+      const res = await fetch(url, { 
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+      });
       if (!res.ok) return [];
       const json = await res.json();
       const users = json?.data?.users;
-      return Array.isArray(users) ? users : [];
+      if (!Array.isArray(users)) return [];
+      const MOCK_NAMES = new Set(['alex_creator', 'sophia_celestial', 'liam_sound', 'usr_alex', 'usr_sophia', 'usr_liam']);
+      return users.filter(u => u && !MOCK_NAMES.has(u.username?.toLowerCase()) && !MOCK_NAMES.has(u.id?.toLowerCase()));
     } catch (err) {
       console.warn('[CloudRegistry] Failed to fetch users from cloud registry:', err);
       return [];

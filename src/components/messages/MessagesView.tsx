@@ -34,11 +34,28 @@ export const MessagesView: React.FC = () => {
   } = useApp();
   
   const [selectedConvId, setSelectedConvId] = useState<string>(() => {
+    try {
+      const stored = sessionStorage.getItem('sphere_active_conv_id');
+      if (stored && conversations.some(c => c.id === stored)) {
+        sessionStorage.removeItem('sphere_active_conv_id');
+        return stored;
+      }
+    } catch {}
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       return '';
     }
     return conversations[0]?.id || '';
   });
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem('sphere_active_conv_id');
+      if (stored && conversations.some(c => c.id === stored)) {
+        setSelectedConvId(stored);
+        sessionStorage.removeItem('sphere_active_conv_id');
+      }
+    } catch {}
+  }, [conversations]);
   const [inputText, setInputText] = useState('');
   const [searchFilter, setSearchFilter] = useState('');
   const [isPartnerTyping, setIsPartnerTyping] = useState(false);

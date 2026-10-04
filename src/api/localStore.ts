@@ -61,56 +61,10 @@ function setItem<T>(key: string, value: T): void {
   idbSet(key, value).catch(() => {});
 }
 
-const DEFAULT_COMMUNITY_USERS: StoredUser[] = [
-  {
-    id: 'usr_tanush',
-    username: 'tanush',
-    name: 'Tanush Shahi',
-    email: 'tanush@sphere.app',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-    bio: 'Founder of Social Sphere 🌌 Building the future of connected social worlds.',
-    followersCount: 1240,
-    followingCount: 180,
-    postsCount: 1,
-    isVerified: true
-  },
-  {
-    id: 'usr_alex',
-    username: 'alex_creator',
-    name: 'Alex Rivera',
-    email: 'alex@sphere.app',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-    bio: 'Visual artist & digital creator ✨ Exploring celestial aesthetics.',
-    followersCount: 950,
-    followingCount: 220,
-    postsCount: 1,
-    isVerified: true
-  },
-  {
-    id: 'usr_sophia',
-    username: 'sophia_celestial',
-    name: 'Sophia Chen',
-    email: 'sophia@sphere.app',
-    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80',
-    bio: 'Cosmic beats & stellar visuals 🎧 Stargazer & UI designer.',
-    followersCount: 1420,
-    followingCount: 310,
-    postsCount: 0,
-    isVerified: true
-  },
-  {
-    id: 'usr_liam',
-    username: 'liam_sound',
-    name: 'Liam Vance',
-    email: 'liam@sphere.app',
-    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80',
-    bio: 'Music producer & audio engineer 🎵 Ambient synth waves.',
-    followersCount: 880,
-    followingCount: 150,
-    postsCount: 0,
-    isVerified: true
-  }
-];
+const MOCK_USERNAMES = new Set([
+  'alex_creator', 'sophia_celestial', 'liam_sound', 
+  'usr_alex', 'usr_sophia', 'usr_liam'
+]);
 
 export async function initLocalStore(): Promise<void> {
   const listKeys = [USERS_KEY, POSTS_KEY, STORIES_KEY, CONVERSATIONS_KEY, FOLLOWS_KEY, BLOCKS_KEY];
@@ -135,22 +89,37 @@ export async function initLocalStore(): Promise<void> {
     idbSet(key, safeList).catch(() => {});
   }
 
-  // Ensure default community creators exist in USERS_KEY so friend search always finds creators
-  const currentUsers = Array.isArray(memCache[USERS_KEY]) ? (memCache[USERS_KEY] as StoredUser[]) : [];
-  let updatedUsers = false;
-  for (const seed of DEFAULT_COMMUNITY_USERS) {
-    if (!currentUsers.some(u => u && (u.id === seed.id || (u.username && u.username.toLowerCase() === seed.username.toLowerCase())))) {
-      currentUsers.push(seed);
-      updatedUsers = true;
-    }
-  }
-  if (updatedUsers || currentUsers.length === 0) {
-    memCache[USERS_KEY] = currentUsers;
-    try {
-      localStorage.setItem(USERS_KEY, JSON.stringify(currentUsers));
-    } catch {}
-    idbSet(USERS_KEY, currentUsers).catch(() => {});
-  }
+  // 1. Purge all mock accounts from storage so only real user accounts exist
+  let currentUsers = Array.isArray(memCache[USERS_KEY]) ? (memCache[USERS_KEY] as StoredUser[]) : [];
+  currentUsers = currentUsers.filter(u => u && !MOCK_USERNAMES.has((u.username || '').toLowerCase()) && !MOCK_USERNAMES.has((u.id || '').toLowerCase()));
+  memCache[USERS_KEY] = currentUsers;
+  try {
+    localStorage.setItem(USERS_KEY, JSON.stringify(currentUsers));
+  } catch {}
+  idbSet(USERS_KEY, currentUsers).catch(() => {});
+
+  // 2. Clean posts & comments from mock accounts
+  let currentPosts = Array.isArray(memCache[POSTS_KEY]) ? (memCache[POSTS_KEY] as Post[]) : [];
+  currentPosts = currentPosts
+    .filter(p => p && p.user && !MOCK_USERNAMES.has((p.user.username || '').toLowerCase()) && !MOCK_USERNAMES.has((p.user.id || '').toLowerCase()))
+    .map(p => ({
+      ...p,
+      comments: (p.comments || []).filter(c => c && c.user && !MOCK_USERNAMES.has((c.user.username || '').toLowerCase()))
+    }));
+  memCache[POSTS_KEY] = currentPosts;
+  try {
+    localStorage.setItem(POSTS_KEY, JSON.stringify(currentPosts));
+  } catch {}
+  idbSet(POSTS_KEY, currentPosts).catch(() => {});
+
+  // 3. Clean follows associated with mock accounts
+  let currentFollows = Array.isArray(memCache[FOLLOWS_KEY]) ? (memCache[FOLLOWS_KEY] as FollowRelation[]) : [];
+  currentFollows = currentFollows.filter(f => f && !MOCK_USERNAMES.has((f.followingId || '').toLowerCase()) && !MOCK_USERNAMES.has((f.followerId || '').toLowerCase()));
+  memCache[FOLLOWS_KEY] = currentFollows;
+  try {
+    localStorage.setItem(FOLLOWS_KEY, JSON.stringify(currentFollows));
+  } catch {}
+  idbSet(FOLLOWS_KEY, currentFollows).catch(() => {});
 
   // Merge users from the shared online Cloud Registry
   cloudRegistry.fetchUsers().then(cloudUsers => {
@@ -180,7 +149,6 @@ export async function initLocalStore(): Promise<void> {
   }).catch(() => {});
 
   // Ensure initial welcome posts exist if POSTS_KEY is empty
-  const currentPosts = Array.isArray(memCache[POSTS_KEY]) ? (memCache[POSTS_KEY] as Post[]) : [];
   if (currentPosts.length === 0) {
     const welcomePost: Post = {
       id: 'post_welcome_sphere',
@@ -216,26 +184,7 @@ export async function initLocalStore(): Promise<void> {
       likesCount: 128,
       isLiked: false,
       isSaved: false,
-      comments: [
-        {
-          id: 'comm_welcome_1',
-          postId: 'post_welcome_sphere',
-          user: {
-            id: 'usr_alex',
-            username: 'alex_creator',
-            name: 'Alex Rivera',
-            avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-            followersCount: 950,
-            followingCount: 220,
-            postsCount: 1,
-            isVerified: true
-          },
-          text: 'The friend discovery radar and celestial vibes are next level! ✨',
-          createdAt: 'Just now',
-          likesCount: 12,
-          isLiked: false
-        }
-      ],
+      comments: [],
       createdAt: new Date().toISOString()
     };
     currentPosts.push(welcomePost);
@@ -1019,7 +968,7 @@ export const localStore = {
         : new Set<string>();
 
       const clean = users
-        .filter(u => u.id !== currentId && !blocked.has(u.id))
+        .filter(u => u.id !== currentId && !blocked.has(u.id) && !MOCK_USERNAMES.has((u.username || '').toLowerCase()) && !MOCK_USERNAMES.has((u.id || '').toLowerCase()))
         .map(({ password: _, email: __, ...u }) => ({
           ...u,
           followersCount: follows.filter(f => f.followingId === u.id).length,
@@ -1046,6 +995,7 @@ export const localStore = {
       let matched = users
         .filter(u => {
           if (!u || blocked.has(u.id)) return false;
+          if (MOCK_USERNAMES.has((u.username || '').toLowerCase()) || MOCK_USERNAMES.has((u.id || '').toLowerCase())) return false;
           const uid = (u.id || '').toLowerCase();
           const uname = (u.username || '').toLowerCase();
           const dname = (u.name || '').toLowerCase();
@@ -1065,6 +1015,7 @@ export const localStore = {
         if (cloudMatches && cloudMatches.length > 0) {
           let updated = false;
           for (const cm of cloudMatches) {
+            if (MOCK_USERNAMES.has((cm.username || '').toLowerCase()) || MOCK_USERNAMES.has((cm.id || '').toLowerCase())) continue;
             if (!users.some(u => u && (u.id === cm.id || u.username.toLowerCase() === cm.username.toLowerCase()))) {
               users.push(cm as StoredUser);
               matched.push(cm as StoredUser);
@@ -1147,6 +1098,7 @@ export const localStore = {
 
         users.push(friend);
         setItem(USERS_KEY, users);
+        cloudRegistry.syncUser(friend).catch(() => {});
       }
 
       // Automatically follow friend
