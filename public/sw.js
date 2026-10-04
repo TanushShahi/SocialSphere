@@ -1,4 +1,4 @@
-const CACHE_NAME = 'social-sphere-v12';
+const CACHE_NAME = 'social-sphere-v13';
 
 self.addEventListener('install', () => {
   self.skipWaiting();

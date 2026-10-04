@@ -18,15 +18,34 @@ interface StoredUser extends User {
 const memCache: Record<string, any> = {};
 
 function getItem<T>(key: string, defaultValue: T): T {
-  if (memCache[key] !== undefined) {
-    return memCache[key];
+  const cached = memCache[key];
+  if (cached !== undefined && cached !== null) {
+    if (Array.isArray(defaultValue)) {
+      if (Array.isArray(cached)) return cached as T;
+    } else {
+      return cached as T;
+    }
   }
+
   try {
     const raw = localStorage.getItem(key);
-    const val = raw ? JSON.parse(raw) : defaultValue;
+    if (!raw || raw === 'null' || raw === 'undefined') {
+      memCache[key] = defaultValue;
+      return defaultValue;
+    }
+    const val = JSON.parse(raw);
+    if (val === null || val === undefined) {
+      memCache[key] = defaultValue;
+      return defaultValue;
+    }
+    if (Array.isArray(defaultValue) && !Array.isArray(val)) {
+      memCache[key] = defaultValue;
+      return defaultValue;
+    }
     memCache[key] = val;
-    return val;
+    return val as T;
   } catch {
+    memCache[key] = defaultValue;
     return defaultValue;
   }
 }
@@ -42,21 +61,40 @@ function setItem<T>(key: string, value: T): void {
 }
 
 export async function initLocalStore(): Promise<void> {
-  const keys = [USERS_KEY, POSTS_KEY, STORIES_KEY, CONVERSATIONS_KEY, FOLLOWS_KEY, BLOCKS_KEY, CURRENT_USER_KEY, CURRENT_USER_ID_KEY];
-  for (const key of keys) {
-    const idbVal = await idbGet<any>(key);
-    if (idbVal !== null && idbVal !== undefined) {
-      memCache[key] = idbVal;
+  const listKeys = [USERS_KEY, POSTS_KEY, STORIES_KEY, CONVERSATIONS_KEY, FOLLOWS_KEY, BLOCKS_KEY];
+  const otherKeys = [CURRENT_USER_KEY, CURRENT_USER_ID_KEY];
+
+  for (const key of listKeys) {
+    let val = await idbGet<any>(key);
+    if (!val || !Array.isArray(val)) {
       try {
-        localStorage.setItem(key, typeof idbVal === 'string' ? idbVal : JSON.stringify(idbVal));
-      } catch {
-        // Kept in memCache and IndexedDB safely
-      }
-    } else {
-      const localVal = getItem(key, null);
-      if (localVal !== null && localVal !== undefined) {
-        await idbSet(key, localVal);
-      }
+        const raw = localStorage.getItem(key);
+        if (raw && raw !== 'null' && raw !== 'undefined') {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) val = parsed;
+        }
+      } catch {}
+    }
+    const safeList = Array.isArray(val) ? val : [];
+    memCache[key] = safeList;
+    try {
+      localStorage.setItem(key, JSON.stringify(safeList));
+    } catch {}
+    idbSet(key, safeList).catch(() => {});
+  }
+
+  for (const key of otherKeys) {
+    let val = await idbGet<any>(key);
+    if (val === null || val === undefined) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw && raw !== 'null' && raw !== 'undefined') {
+          val = key === CURRENT_USER_ID_KEY ? raw : JSON.parse(raw);
+        }
+      } catch {}
+    }
+    if (val !== null && val !== undefined) {
+      memCache[key] = val;
     }
   }
 }
@@ -135,11 +173,12 @@ function getBlockedIdsForUser(userId: string): Set<string> {
 export const localStore = {
   auth: {
     async register(username: string, email: string, password: string, name: string): Promise<{ user: User; token: string }> {
-      const users = getItem<StoredUser[]>(USERS_KEY, []);
+      const rawUsers = getItem<StoredUser[]>(USERS_KEY, []);
+      const users: StoredUser[] = Array.isArray(rawUsers) ? rawUsers : [];
       const trimmedUser = username.trim().toLowerCase();
       const trimmedEmail = email.trim().toLowerCase();
 
-      if (users.some(u => u.username.toLowerCase() === trimmedUser)) {
+      if (Array.isArray(users) && users.some(u => u && u.username && u.username.toLowerCase() === trimmedUser)) {
         throw new Error('Username is already taken');
       }
 
@@ -175,7 +214,8 @@ export const localStore = {
     },
 
     async login(login: string, pass: string): Promise<{ user: User; token: string }> {
-      const users = getItem<StoredUser[]>(USERS_KEY, []);
+      const rawUsers = getItem<StoredUser[]>(USERS_KEY, []);
+      const users: StoredUser[] = Array.isArray(rawUsers) ? rawUsers : [];
       const target = login.trim().toLowerCase();
 
       const found = users.find(u => 
@@ -198,7 +238,8 @@ export const localStore = {
 
     async me(): Promise<{ user: User }> {
       const currentId = getCurrentUserId();
-      const users = getItem<StoredUser[]>(USERS_KEY, []);
+      const rawUsers = getItem<StoredUser[]>(USERS_KEY, []);
+      const users: StoredUser[] = Array.isArray(rawUsers) ? rawUsers : [];
       
       let found: StoredUser | undefined;
       if (currentId) {
@@ -213,7 +254,7 @@ export const localStore = {
             const parsed = JSON.parse(cachedRaw);
             if (parsed?.id) {
               found = parsed;
-              if (!users.some(u => u.id === parsed.id)) {
+              if (Array.isArray(users) && !users.some(u => u && u.id === parsed.id)) {
                 users.push(parsed);
                 setItem(USERS_KEY, users);
               }
