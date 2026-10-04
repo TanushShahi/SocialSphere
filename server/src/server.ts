@@ -6,7 +6,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { initDatabase, db } from './db/index.js';
-import { seedDatabase } from './db/seed.js';
 
 import { authRouter } from './routes/auth.routes.js';
 import { postsRouter } from './routes/posts.routes.js';
@@ -200,7 +199,6 @@ io.on('connection', (socket) => {
 async function start() {
   try {
     initDatabase();
-    await seedDatabase();
 
     httpServer.listen(PORT, () => {
       console.log(`🚀 Social Sphere Backend Server (Express + Socket.io) running on http://localhost:${PORT}`);
