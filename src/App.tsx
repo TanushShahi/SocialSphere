@@ -62,9 +62,7 @@ const AppContent: React.FC = () => {
       {/* 5. Drawers & Modals */}
       <SearchDrawer />
       <NotificationsDrawer />
-      <ErrorBoundary fallback={null} onReset={() => setIsCreatePostOpen(false)}>
-        <CreatePostModal />
-      </ErrorBoundary>
+      <CreatePostModal />
       <StoryViewerModal />
       <PostDetailModal />
       <CallModal session={callSession} onEndCall={endCall} onAcceptCall={acceptIncomingCall} />
