@@ -113,6 +113,12 @@ usersRouter.post('/:id/follow', requireAuth, (req: AuthRequest, res: Response): 
       return;
     }
 
+    const targetUser = db.prepare('SELECT id FROM users WHERE id = ?').get(followingId);
+    if (!targetUser) {
+      res.status(404).json({ error: 'User account not found' });
+      return;
+    }
+
     const existing = db.prepare('SELECT 1 FROM followers WHERE follower_id = ? AND following_id = ?').get(followerId, followingId);
     let isFollowing = false;
 
