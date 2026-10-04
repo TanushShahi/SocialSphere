@@ -78,6 +78,19 @@ async function execute<T>(remoteFn: () => Promise<T>, fallbackFn: () => Promise<
   }
 }
 
+// Account discovery must use the authoritative backend database.
+// Do NOT fall back to localStorage/IndexedDB or the legacy cloud registry for
+// account search/connect/follow, otherwise one device can show users that do
+// not actually exist in the production SocialSphere database.
+async function executeRemoteOnly<T>(remoteFn: () => Promise<T>): Promise<T> {
+  if (!SERVER_URL && isStaticHost) {
+    throw new Error(
+      'SocialSphere backend is not configured. Set VITE_API_URL to your live backend URL and rebuild the frontend.'
+    );
+  }
+  return remoteFn();
+}
+
 export const api = {
   auth: {
     login: (login: string, password: string) =>
@@ -291,12 +304,10 @@ export const api = {
       ),
 
     follow: (userId: string) =>
-      execute(
-        () =>
-          request<{ isFollowing: boolean }>(`/users/${userId}/follow`, {
-            method: 'POST',
-          }),
-        () => localStore.users.follow(userId)
+      executeRemoteOnly(() =>
+        request<{ isFollowing: boolean }>(`/users/${userId}/follow`, {
+          method: 'POST',
+        })
       ),
 
     getFollowers: (userId: string) =>
@@ -333,19 +344,16 @@ export const api = {
       ),
 
     search: (query: string) =>
-      execute(
-        () => request<{ users: User[] }>(`/users/search?q=${encodeURIComponent(query)}`),
-        () => localStore.users.search(query)
+      executeRemoteOnly(() =>
+        request<{ users: User[] }>(`/users/search?q=${encodeURIComponent(query)}`)
       ),
 
     connectFriend: (idOrUsername: string, options?: { name?: string; avatar?: string }) =>
-      execute(
-        () =>
-          request<{ user: User }>('/users/connect', {
-            method: 'POST',
-            body: JSON.stringify({ idOrUsername, ...options }),
-          }),
-        () => localStore.users.connectFriend(idOrUsername, options)
+      executeRemoteOnly(() =>
+        request<{ user: User }>('/users/connect', {
+          method: 'POST',
+          body: JSON.stringify({ idOrUsername }),
+        })
       ),
   },
 
