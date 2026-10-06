@@ -1,6 +1,7 @@
 import { User, Post, Story, Reel, Conversation, NotificationItem, Comment, FollowRelation, BlockRelation } from '../types';
 import { idbGet, idbSet } from './indexedDB';
 import { cloudRegistry } from './cloudRegistry';
+import { onlineHub } from './onlineHub';
 
 const USERS_KEY = 'sphere_local_users';
 const POSTS_KEY = 'sphere_local_posts';
@@ -122,8 +123,24 @@ export async function initLocalStore(): Promise<void> {
   } catch {}
   idbSet(FOLLOWS_KEY, currentFollows).catch(() => {});
 
-  // Merge users from the shared online Cloud Registry
-  cloudRegistry.fetchUsers().then(cloudUsers => {
+  // Merge users & follows from the online Cloud Hub
+  onlineHub.fetchFollows(true).then(onlineFollows => {
+    if (Array.isArray(onlineFollows) && onlineFollows.length > 0) {
+      const storedFollows = getItem<FollowRelation[]>(FOLLOWS_KEY, []);
+      for (const of of onlineFollows) {
+        if (!storedFollows.some(f => f.followerId === of.followerId && f.followingId === of.followingId)) {
+          storedFollows.push({
+            followerId: of.followerId,
+            followingId: of.followingId,
+            createdAt: of.createdAt
+          });
+        }
+      }
+      setItem(FOLLOWS_KEY, storedFollows);
+    }
+  }).catch(() => {});
+
+  onlineHub.fetchUsers(true).then(cloudUsers => {
     if (Array.isArray(cloudUsers) && cloudUsers.length > 0) {
       const stored = getItem<StoredUser[]>(USERS_KEY, []);
       let hasNew = false;
@@ -276,6 +293,7 @@ export const localStore = {
       setItem(USERS_KEY, users);
       setCurrentUserId(newUser.id);
       cloudRegistry.syncUser(newUser).catch(() => {});
+      onlineHub.syncUser(newUser).catch(() => {});
       const token = `local_jwt_${newUser.id}_${Date.now()}`;
 
       const { password: _, email: __, ...userClean } = newUser;
@@ -301,6 +319,7 @@ export const localStore = {
 
       setCurrentUserId(found.id);
       cloudRegistry.syncUser(found).catch(() => {});
+      onlineHub.syncUser(found).catch(() => {});
       const token = `local_jwt_${found.id}_${Date.now()}`;
       const { password: _, email: __, ...userClean } = found;
       return { user: userClean as User, token };
@@ -714,20 +733,48 @@ export const localStore = {
 
   users: {
     async getProfile(username: string): Promise<{ profile: any }> {
-      const users = getItem<StoredUser[]>(USERS_KEY, []);
-      const found = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+      let users = getItem<StoredUser[]>(USERS_KEY, []);
+      let found = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+      
+      if (!found) {
+        try {
+          const onlineList = await onlineHub.fetchUsers(true);
+          found = onlineList.find(u => u.username.toLowerCase() === username.toLowerCase()) as StoredUser;
+          if (found && !users.some(u => u.id === found!.id)) {
+            users.push(found);
+            setItem(USERS_KEY, users);
+          }
+        } catch {}
+      }
+
       if (!found) throw new Error('User not found');
 
       const currentId = getCurrentUserId();
-      const follows = getFollows();
+      let follows = getFollows();
+      try {
+        const onlineFollows = await onlineHub.fetchFollows();
+        if (onlineFollows && onlineFollows.length > 0) {
+          for (const of of onlineFollows) {
+            if (!follows.some(f => f.followerId === of.followerId && f.followingId === of.followingId)) {
+              follows.push({
+                followerId: of.followerId,
+                followingId: of.followingId,
+                createdAt: of.createdAt
+              });
+            }
+          }
+          setFollows(follows);
+        }
+      } catch {}
+
       const isFollowing = currentId 
-        ? follows.some(f => f.followerId === currentId && f.followingId === found.id)
+        ? follows.some(f => f.followerId === currentId && f.followingId === found!.id)
         : false;
 
-      const followersCount = follows.filter(f => f.followingId === found.id).length;
-      const followingCount = follows.filter(f => f.followerId === found.id).length;
+      const followersCount = follows.filter(f => f.followingId === found!.id).length;
+      const followingCount = follows.filter(f => f.followerId === found!.id).length;
 
-      const posts = getItem<Post[]>(POSTS_KEY, []).filter(p => p.user.id === found.id);
+      const posts = getItem<Post[]>(POSTS_KEY, []).filter(p => p.user.id === found!.id);
       const { password: _, email: __, ...cleanUser } = found;
 
       return {
@@ -767,8 +814,16 @@ export const localStore = {
       const follows = getFollows();
       const existingIdx = follows.findIndex(f => f.followerId === currentId && f.followingId === userId);
       const users = getItem<StoredUser[]>(USERS_KEY, []);
-      const currentUserObj = users.find(u => u.id === currentId);
-      const targetUserObj = users.find(u => u.id === userId);
+      let currentUserObj = users.find(u => u.id === currentId);
+      let targetUserObj = users.find(u => u.id === userId);
+
+      if (!targetUserObj) {
+        const allOnline = await onlineHub.fetchUsers();
+        targetUserObj = allOnline.find(u => u.id === userId) as StoredUser;
+        if (targetUserObj) {
+          users.push(targetUserObj);
+        }
+      }
 
       let isFollowing = false;
 
@@ -782,6 +837,7 @@ export const localStore = {
         if (targetUserObj) {
           targetUserObj.followersCount = Math.max(0, (targetUserObj.followersCount || 1) - 1);
         }
+        onlineHub.unfollowUser(currentId, userId).catch(() => {});
       } else {
         // Follow
         follows.push({
@@ -796,6 +852,11 @@ export const localStore = {
         if (targetUserObj) {
           targetUserObj.followersCount = (targetUserObj.followersCount || 0) + 1;
         }
+        if (currentUserObj && targetUserObj) {
+          onlineHub.followUser(currentUserObj, targetUserObj).catch(() => {});
+        } else if (currentUserObj) {
+          onlineHub.followUser(currentUserObj, { id: userId, username: userId } as any).catch(() => {});
+        }
       }
 
       setFollows(follows);
@@ -805,6 +866,24 @@ export const localStore = {
     },
 
     async getFollowers(userId: string): Promise<{ users: User[] }> {
+      try {
+        const onlineResult = await onlineHub.getFollowers(userId);
+        if (onlineResult && onlineResult.length > 0) {
+          const currentId = getCurrentUserId();
+          const follows = getFollows();
+          const myFollowingSet = currentId 
+            ? new Set(follows.filter(f => f.followerId === currentId).map(f => f.followingId))
+            : new Set<string>();
+
+          return { 
+            users: onlineResult.map(u => ({
+              ...u,
+              isFollowing: myFollowingSet.has(u.id)
+            }))
+          };
+        }
+      } catch {}
+
       const users = getItem<StoredUser[]>(USERS_KEY, []);
       const follows = getFollows();
       const currentId = getCurrentUserId();
@@ -831,6 +910,24 @@ export const localStore = {
     },
 
     async getFollowing(userId: string): Promise<{ users: User[] }> {
+      try {
+        const onlineResult = await onlineHub.getFollowing(userId);
+        if (onlineResult && onlineResult.length > 0) {
+          const currentId = getCurrentUserId();
+          const follows = getFollows();
+          const myFollowingSet = currentId 
+            ? new Set(follows.filter(f => f.followerId === currentId).map(f => f.followingId))
+            : new Set<string>();
+
+          return { 
+            users: onlineResult.map(u => ({
+              ...u,
+              isFollowing: myFollowingSet.has(u.id)
+            }))
+          };
+        }
+      } catch {}
+
       const users = getItem<StoredUser[]>(USERS_KEY, []);
       const follows = getFollows();
       const currentId = getCurrentUserId();
@@ -1073,6 +1170,53 @@ export const localStore = {
       const convs = getItem<Conversation[]>(CONVERSATIONS_KEY, []);
       const currentId = getCurrentUserId();
       if (!currentId) return { conversations: convs };
+
+      // Sync online messages from onlineHub into local conversations
+      try {
+        const onlineMsgs = await onlineHub.fetchMessages();
+        const users = getItem<StoredUser[]>(USERS_KEY, []);
+        for (const om of onlineMsgs) {
+          if (om.senderId === currentId || om.receiverId === currentId) {
+            const partnerId = om.senderId === currentId ? om.receiverId : om.senderId;
+            let conv = convs.find(c => c.participant.id === partnerId);
+            if (!conv) {
+              const partner = users.find(u => u.id === partnerId) || {
+                id: partnerId,
+                username: om.senderId === currentId ? (om.receiverUsername || 'user') : (om.senderUsername || 'user'),
+                name: om.senderId === currentId ? (om.receiverUsername || 'User') : (om.senderUsername || 'User'),
+                avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+                followersCount: 0,
+                followingCount: 0,
+                postsCount: 0,
+                isVerified: false
+              } as User;
+              conv = {
+                id: `conv_${partnerId}`,
+                participant: partner,
+                messages: [],
+                unreadCount: 0
+              };
+              convs.unshift(conv);
+            }
+            if (!conv.messages.some(m => m.id === om.id)) {
+              conv.messages.push({
+                id: om.id,
+                senderId: om.senderId,
+                receiverId: om.receiverId,
+                text: om.text,
+                mediaUrl: om.mediaUrl,
+                createdAt: om.createdAt,
+                isRead: Boolean(om.isRead)
+              });
+              conv.messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            }
+          }
+        }
+        setItem(CONVERSATIONS_KEY, convs);
+      } catch (err) {
+        console.warn('Syncing online messages warning:', err);
+      }
+
       const blocked = getBlockedIdsForUser(currentId);
       return { conversations: convs.filter(c => !blocked.has(c.participant.id)) };
     },
@@ -1093,7 +1237,7 @@ export const localStore = {
 
       if (!conv) {
         conv = {
-          id: `conv_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          id: `conv_${recipient!.id}`,
           participant: recipient as User,
           messages: [],
           unreadCount: 0
@@ -1111,8 +1255,18 @@ export const localStore = {
       const conv = convs.find(c => c.id === convId);
       if (!conv) throw new Error('Conversation not found');
 
+      // Post to onlineHub for cross-device delivery
+      const onlineMsg = await onlineHub.sendMessage({
+        senderId: me.id,
+        senderUsername: me.username,
+        receiverId: conv.participant.id,
+        receiverUsername: conv.participant.username,
+        text,
+        mediaUrl
+      });
+
       const msg = {
-        id: `msg_${Date.now()}`,
+        id: onlineMsg.id,
         senderId: me.id,
         receiverId: conv.participant.id,
         text,
@@ -1121,8 +1275,10 @@ export const localStore = {
         isRead: true
       };
 
-      conv.messages.push(msg);
-      setItem(CONVERSATIONS_KEY, convs);
+      if (!conv.messages.some(m => m.id === msg.id)) {
+        conv.messages.push(msg);
+        setItem(CONVERSATIONS_KEY, convs);
+      }
 
       return { message: msg };
     }

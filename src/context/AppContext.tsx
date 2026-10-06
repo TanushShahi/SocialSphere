@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { 
   User, 
   Post, 
@@ -13,6 +13,7 @@ import {
 } from '../types';
 import { api, getToken, setToken } from '../api/client';
 import { initLocalStore } from '../api/localStore';
+import { onlineHub } from '../api/onlineHub';
 import { compressImage } from '../utils/imageCompressor';
 import { getSocket, registerSocketUser } from '../services/socket';
 
@@ -179,6 +180,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Calling & Real-Time Presence
   const [callSession, setCallSession] = useState<CallSession | null>(null);
+  const activeCallIdRef = useRef<string | null>(null);
   const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
 
   // Feed & Full-screen Audio State
@@ -704,8 +706,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // WebRTC Audio/Video Calling
-  const initiateCall = (
+  // WebRTC Audio/Video Calling via Online Cloud Hub & Socket
+  const initiateCall = async (
     partner: { id: string; username: string; name: string; avatar: string },
     callType: CallType
   ) => {
@@ -718,35 +720,72 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isVideoOff: false
     });
 
-    const s = getSocket();
-    s.emit('call-user', {
-      toUserId: partner.id,
-      fromUserId: currentUser.id,
-      offer: { type: 'offer' },
-      callType,
-      caller: {
-        id: currentUser.id,
-        username: currentUser.username,
-        name: currentUser.name,
-        avatar: currentUser.avatar
+    try {
+      const onlineCall = await onlineHub.initiateCall(
+        {
+          id: currentUser.id,
+          username: currentUser.username,
+          name: currentUser.name,
+          avatar: currentUser.avatar
+        },
+        partner.id,
+        callType
+      );
+      activeCallIdRef.current = onlineCall.callId;
+    } catch (e) {
+      console.warn('OnlineHub initiateCall error:', e);
+    }
+
+    try {
+      const s = getSocket();
+      if (s.connected) {
+        s.emit('call-user', {
+          toUserId: partner.id,
+          fromUserId: currentUser.id,
+          offer: { type: 'offer' },
+          callType,
+          caller: {
+            id: currentUser.id,
+            username: currentUser.username,
+            name: currentUser.name,
+            avatar: currentUser.avatar
+          }
+        });
       }
-    });
+    } catch {}
   };
 
-  const acceptIncomingCall = () => {
+  const acceptIncomingCall = async () => {
     if (!callSession || !currentUser) return;
     setCallSession(prev => (prev ? { ...prev, status: 'connected' } : null));
-    const s = getSocket();
-    s.emit('call-accepted', {
-      toUserId: callSession.partner.id,
-      answer: { type: 'answer' }
-    });
+    
+    if (activeCallIdRef.current) {
+      await onlineHub.acceptCall(activeCallIdRef.current);
+    }
+
+    try {
+      const s = getSocket();
+      if (s.connected) {
+        s.emit('call-accepted', {
+          toUserId: callSession.partner.id,
+          answer: { type: 'answer' }
+        });
+      }
+    } catch {}
   };
 
-  const endCall = () => {
+  const endCall = async () => {
+    if (activeCallIdRef.current) {
+      await onlineHub.endCall(activeCallIdRef.current);
+      activeCallIdRef.current = null;
+    }
     if (callSession) {
-      const s = getSocket();
-      s.emit('end-call', { toUserId: callSession.partner.id });
+      try {
+        const s = getSocket();
+        if (s.connected) {
+          s.emit('end-call', { toUserId: callSession.partner.id });
+        }
+      } catch {}
     }
     setCallSession(null);
   };
@@ -771,6 +810,101 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error(err);
     }
   };
+
+  // Real-time online monitor for Incoming Calls & Messages across devices
+  useEffect(() => {
+    if (!currentUser) return;
+
+    let isMounted = true;
+
+    const checkOnlineUpdates = async () => {
+      // 1. Check incoming calls if idle
+      if (!callSession) {
+        try {
+          const incoming = await onlineHub.checkIncomingCall(currentUser.id);
+          if (incoming && isMounted) {
+            activeCallIdRef.current = incoming.callId;
+            setCallSession({
+              status: 'incoming',
+              callType: incoming.callType,
+              partner: incoming.caller,
+              isMuted: false,
+              isVideoOff: false
+            });
+            return;
+          }
+        } catch {}
+      }
+
+      // 2. If in outgoing call, check if answered or rejected
+      if (callSession?.status === 'outgoing' && activeCallIdRef.current) {
+        try {
+          const statusCheck = await onlineHub.checkCallStatus(activeCallIdRef.current);
+          if (statusCheck && isMounted) {
+            if (statusCheck.status === 'connected') {
+              setCallSession(prev => (prev ? { ...prev, status: 'connected' } : null));
+            } else if (statusCheck.status === 'rejected' || statusCheck.status === 'ended') {
+              setCallSession(null);
+              activeCallIdRef.current = null;
+            }
+          }
+        } catch {}
+      }
+
+      // 3. If in connected call, check if remote partner ended call
+      if (callSession?.status === 'connected' && activeCallIdRef.current) {
+        try {
+          const statusCheck = await onlineHub.checkCallStatus(activeCallIdRef.current);
+          if (statusCheck && isMounted && statusCheck.status === 'ended') {
+            setCallSession(null);
+            activeCallIdRef.current = null;
+          }
+        } catch {}
+      }
+
+      // 4. Background refresh of conversations
+      try {
+        const convRes = await api.messages.getConversations();
+        if (convRes && isMounted) {
+          setConversations(convRes.conversations);
+        }
+      } catch {}
+    };
+
+    const interval = setInterval(checkOnlineUpdates, 2500);
+
+    // Listen to immediate BroadcastChannel events for same-device inter-tab sync
+    const unsubBroadcast = onlineHub.onBroadcast((evt) => {
+      if (!isMounted) return;
+      if (evt.type === 'CALL_INITIATED' && evt.payload.receiverId === currentUser.id) {
+        activeCallIdRef.current = evt.payload.callId;
+        setCallSession({
+          status: 'incoming',
+          callType: evt.payload.callType,
+          partner: evt.payload.caller,
+          isMuted: false,
+          isVideoOff: false
+        });
+      } else if (evt.type === 'CALL_STATUS_CHANGE' && evt.payload.callId === activeCallIdRef.current) {
+        if (evt.payload.status === 'connected') {
+          setCallSession(prev => (prev ? { ...prev, status: 'connected' } : null));
+        } else if (evt.payload.status === 'ended' || evt.payload.status === 'rejected') {
+          setCallSession(null);
+          activeCallIdRef.current = null;
+        }
+      } else if (evt.type === 'NEW_MESSAGE' && (evt.payload.receiverId === currentUser.id || evt.payload.senderId === currentUser.id)) {
+        api.messages.getConversations().then(res => {
+          if (isMounted) setConversations(res.conversations);
+        }).catch(() => {});
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      unsubBroadcast();
+    };
+  }, [currentUser?.id, callSession?.status]);
 
   // Follow / Unfollow user toggle
   const toggleFollowUser = async (userId: string): Promise<boolean> => {

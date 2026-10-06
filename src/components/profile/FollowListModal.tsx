@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Search, UserCheck, UserPlus, Users } from 'lucide-react';
+import { X, Search, UserCheck, UserPlus, Users, MessageCircle } from 'lucide-react';
 import { User } from '../../types';
 import { useApp } from '../../context/AppContext';
 
@@ -16,7 +16,7 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
   initialTab = 'followers',
   targetUser
 }) => {
-  const { getFollowers, getFollowing, toggleFollowUser, currentUser } = useApp();
+  const { getFollowers, getFollowing, toggleFollowUser, currentUser, startConversationWithUser, setActiveTab: setNavTab, openUserProfile } = useApp();
   const [activeTab, setActiveTab] = useState<'followers' | 'following'>(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -47,7 +47,24 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
     }
   };
 
-  const handleToggleFollow = async (userId: string) => {
+  const handleStartChat = async (user: User, e: React.MouseEvent) => {
+    e.stopPropagation();
+    onClose();
+    try {
+      await startConversationWithUser(user);
+      setNavTab('messages');
+    } catch (err) {
+      console.error('Failed to start chat:', err);
+    }
+  };
+
+  const handleOpenProfile = (user: User) => {
+    onClose();
+    openUserProfile(user);
+  };
+
+  const handleToggleFollow = async (userId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     const isNowFollowing = await toggleFollowUser(userId);
     setFollowers(prev =>
       prev.map(u => (u.id === userId ? { ...u, isFollowing: isNowFollowing } : u))
@@ -157,7 +174,8 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
               return (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between gap-3 p-2.5 rounded-2xl hover:bg-white/5 transition-colors group"
+                  onClick={() => handleOpenProfile(user)}
+                  className="flex items-center justify-between gap-3 p-2.5 rounded-2xl hover:bg-white/5 transition-colors group cursor-pointer"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="relative w-11 h-11 rounded-full bg-gradient-cosmic p-[1.5px] flex-shrink-0">
@@ -184,28 +202,38 @@ export const FollowListModal: React.FC<FollowListModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Follow / Unfollow Button */}
+                  {/* Action Buttons: Message & Follow */}
                   {!isMe ? (
-                    <button
-                      onClick={() => handleToggleFollow(user.id)}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                        user.isFollowing
-                          ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-white/10'
-                          : 'bg-gradient-cosmic text-white shadow-md shadow-pink-500/25 hover:opacity-95 active:scale-95'
-                      }`}
-                    >
-                      {user.isFollowing ? (
-                        <>
-                          <UserCheck className="w-3.5 h-3.5 text-zinc-400" />
-                          <span>Following</span>
-                        </>
-                      ) : (
-                        <>
-                          <UserPlus className="w-3.5 h-3.5" />
-                          <span>Follow</span>
-                        </>
-                      )}
-                    </button>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button
+                        onClick={(e) => handleStartChat(user, e)}
+                        className="p-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 transition-all active:scale-95 shadow-sm"
+                        title="Direct Message"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        onClick={(e) => handleToggleFollow(user.id, e)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${
+                          user.isFollowing
+                            ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-white/10'
+                            : 'bg-gradient-cosmic text-white shadow-md shadow-pink-500/25 hover:opacity-95 active:scale-95'
+                        }`}
+                      >
+                        {user.isFollowing ? (
+                          <>
+                            <UserCheck className="w-3.5 h-3.5 text-zinc-400" />
+                            <span>Following</span>
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus className="w-3.5 h-3.5" />
+                            <span>Follow</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   ) : (
                     <span className="text-[11px] font-semibold text-zinc-500 px-3 py-1 bg-white/5 rounded-xl border border-white/5">
                       You

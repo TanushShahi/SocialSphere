@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../api/client';
+import { onlineHub } from '../../api/onlineHub';
 import { getSocket } from '../../services/socket';
 import { User } from '../../types';
 
@@ -76,6 +77,31 @@ export const MessagesView: React.FC = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeConv?.messages]);
+
+  // Fast real-time online polling for cross-device message delivery
+  useEffect(() => {
+    if (!activeConv?.participant?.id || !currentUser?.id) return;
+
+    let isMounted = true;
+    const pollOnlineMessages = async () => {
+      try {
+        const msgs = await onlineHub.getConversationMessages(currentUser.id, activeConv.participant.id);
+        if (!isMounted) return;
+        const currentMsgIds = new Set(activeConv.messages.map(m => m.id));
+        const hasNew = msgs.some(m => !currentMsgIds.has(m.id));
+        if (hasNew) {
+          // Trigger conversation refresh in AppContext
+          await api.messages.getConversations();
+        }
+      } catch {}
+    };
+
+    const interval = setInterval(pollOnlineMessages, 1500);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [activeConv?.id, activeConv?.participant?.id, currentUser?.id]);
 
   // Listen to typing events for current conversation
   useEffect(() => {

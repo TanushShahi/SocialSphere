@@ -16,6 +16,8 @@ import {
   Share2
 } from 'lucide-react';
 import { User } from '../../types';
+import { api } from '../../api/client';
+import { FollowersListModal } from './FollowersListModal';
 import { useApp } from '../../context/AppContext';
 
 interface UserProfileModalProps {
@@ -44,11 +46,25 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [followersCount, setFollowersCount] = useState(user?.followersCount ?? 0);
   const [copiedId, setCopiedId] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [followersModalState, setFollowersModalState] = useState<{ isOpen: boolean; type: 'followers' | 'following' }>({
+    isOpen: false,
+    type: 'followers'
+  });
 
   useEffect(() => {
     if (user) {
       setIsFollowing(user.isFollowing ?? false);
       setFollowersCount(user.followersCount ?? 0);
+
+      // Live refresh follower stats from online cloud
+      api.users.getProfile(user.username)
+        .then(res => {
+          if (res.profile) {
+            setIsFollowing(res.profile.isFollowing ?? false);
+            setFollowersCount(res.profile.followersCount ?? 0);
+          }
+        })
+        .catch(() => {});
     }
   }, [user]);
 
@@ -294,18 +310,26 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </span>
               <span className="text-[11px] text-zinc-400">Posts</span>
             </div>
-            <div className="p-2 rounded-xl bg-white/[0.02]">
-              <span className="font-extrabold text-white text-sm block">
+
+            <button
+              onClick={() => setFollowersModalState({ isOpen: true, type: 'followers' })}
+              className="p-2 rounded-xl bg-white/[0.02] hover:bg-white/10 active:scale-95 transition-all cursor-pointer group text-center"
+            >
+              <span className="font-extrabold text-white text-sm block group-hover:text-pink-400 transition-colors">
                 {followersCount.toLocaleString()}
               </span>
-              <span className="text-[11px] text-zinc-400">Followers</span>
-            </div>
-            <div className="p-2 rounded-xl bg-white/[0.02]">
-              <span className="font-extrabold text-white text-sm block">
+              <span className="text-[11px] text-zinc-400 group-hover:text-zinc-200">Followers</span>
+            </button>
+
+            <button
+              onClick={() => setFollowersModalState({ isOpen: true, type: 'following' })}
+              className="p-2 rounded-xl bg-white/[0.02] hover:bg-white/10 active:scale-95 transition-all cursor-pointer group text-center"
+            >
+              <span className="font-extrabold text-white text-sm block group-hover:text-pink-400 transition-colors">
                 {(user.followingCount || 0).toLocaleString()}
               </span>
-              <span className="text-[11px] text-zinc-400">Following</span>
-            </div>
+              <span className="text-[11px] text-zinc-400 group-hover:text-zinc-200">Following</span>
+            </button>
           </div>
 
           {/* CONTENT SECTION: Locked Private Account Screen OR Posts Grid */}
@@ -385,6 +409,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           )}
         </div>
       </div>
+      {/* Followers & Following List Modal */}
+      <FollowersListModal
+        isOpen={followersModalState.isOpen}
+        onClose={() => setFollowersModalState(prev => ({ ...prev, isOpen: false }))}
+        userId={user.id}
+        username={user.username}
+        initialType={followersModalState.type}
+      />
     </div>
   );
 };
