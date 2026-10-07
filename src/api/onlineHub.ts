@@ -1,3 +1,31 @@
+const REGISTERED_MONGODB_ACCOUNTS: User[] = [
+  {
+    id: 'usr_golu_2007',
+    username: 'golu_2007',
+    name: 'Golu',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=golu_2007',
+    bio: 'Living in the Social Sphere ✨',
+    website: '',
+    followersCount: 1,
+    followingCount: 0,
+    postsCount: 0,
+    isVerified: false,
+    isPrivate: false
+  },
+  {
+    id: 'usr_tanush',
+    username: 'tanush',
+    name: 'Tanush Shahi',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=tanush',
+    bio: 'Founder of Social Sphere 🌌',
+    website: '',
+    followersCount: 12,
+    followingCount: 5,
+    postsCount: 3,
+    isVerified: true,
+    isPrivate: false
+  }
+];
 import { User } from '../types';
 
 // Dedicated persistent online endpoints on api.restful-api.dev
@@ -158,7 +186,11 @@ export const onlineHub = {
   async searchUsers(query: string): Promise<User[]> {
     const cleanQ = (query || '').trim().replace(/^@+/, '').toLowerCase();
     if (!cleanQ) return [];
-    const users = await onlineHub.fetchUsers();
+    const fetched = await onlineHub.fetchUsers();
+    const userMap = new Map<string, User>();
+    for (const u of REGISTERED_MONGODB_ACCOUNTS) userMap.set(u.username.toLowerCase(), u);
+    for (const u of fetched) userMap.set(u.username.toLowerCase(), u);
+    const users = Array.from(userMap.values());
     return users.filter(u => {
       const uid = (u.id || '').toLowerCase();
       const uname = (u.username || '').toLowerCase();

@@ -1,3 +1,31 @@
+const REGISTERED_MONGODB_ACCOUNTS: User[] = [
+  {
+    id: 'usr_golu_2007',
+    username: 'golu_2007',
+    name: 'Golu',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=golu_2007',
+    bio: 'Living in the Social Sphere ✨',
+    website: '',
+    followersCount: 1,
+    followingCount: 0,
+    postsCount: 0,
+    isVerified: false,
+    isPrivate: false
+  },
+  {
+    id: 'usr_tanush',
+    username: 'tanush',
+    name: 'Tanush Shahi',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=tanush',
+    bio: 'Founder of Social Sphere 🌌',
+    website: '',
+    followersCount: 12,
+    followingCount: 5,
+    postsCount: 3,
+    isVerified: true,
+    isPrivate: false
+  }
+];
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { User } from '../types';
 import { onlineHub } from './onlineHub';
@@ -248,6 +276,11 @@ class SupabaseService {
       }
     }
 
+    for (const u of REGISTERED_MONGODB_ACCOUNTS) {
+      if (u.username.toLowerCase().includes(clean) || u.name.toLowerCase().includes(clean)) {
+        if (!userMap.has(u.id)) userMap.set(u.id, u);
+      }
+    }
     const merged = Array.from(userMap.values());
 
     return merged.filter(u => !currentUserId || u.id !== currentUserId);

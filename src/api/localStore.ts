@@ -1,3 +1,33 @@
+
+export const REGISTERED_MONGODB_ACCOUNTS: User[] = [
+  {
+    id: 'usr_golu_2007',
+    username: 'golu_2007',
+    name: 'Golu',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=golu_2007',
+    bio: 'Living in the Social Sphere ✨',
+    website: '',
+    followersCount: 1,
+    followingCount: 0,
+    postsCount: 0,
+    isVerified: false,
+    isPrivate: false
+  },
+  {
+    id: 'usr_tanush',
+    username: 'tanush',
+    name: 'Tanush Shahi',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=tanush',
+    bio: 'Founder of Social Sphere 🌌',
+    website: '',
+    followersCount: 12,
+    followingCount: 5,
+    postsCount: 3,
+    isVerified: true,
+    isPrivate: false
+  }
+];
+
 import { User, Post, Story, Reel, Conversation, NotificationItem, Comment, FollowRelation, BlockRelation } from '../types';
 import { idbGet, idbSet } from './indexedDB';
 import { cloudRegistry } from './cloudRegistry';
@@ -64,8 +94,7 @@ function setItem<T>(key: string, value: T): void {
 
 const MOCK_USERNAMES = new Set([
   'alex_creator', 'sophia_celestial', 'liam_sound', 
-  'usr_alex', 'usr_sophia', 'usr_liam',
-  'tanush', 'usr_tanush'
+  'usr_alex', 'usr_sophia', 'usr_liam'
 ]);
 
 export async function initLocalStore(): Promise<void> {
@@ -1045,6 +1074,12 @@ export const localStore = {
         ? new Set(follows.filter(f => f.followerId === currentId).map(f => f.followingId))
         : new Set<string>();
 
+      // Include registered MongoDB accounts
+      for (const ra of REGISTERED_MONGODB_ACCOUNTS) {
+        if (!users.some(u => u && u.username.toLowerCase() === ra.username.toLowerCase())) {
+          users.push(ra as StoredUser);
+        }
+      }
       let matched = users
         .filter(u => {
           if (!u || blocked.has(u.id)) return false;
