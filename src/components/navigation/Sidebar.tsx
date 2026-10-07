@@ -1,5 +1,6 @@
 import React from 'react';
 import { 
+  Database,
   Home, 
   Search, 
   Compass, 
@@ -29,6 +30,7 @@ export const Sidebar: React.FC = () => {
     setIsNotificationsOpen,
     setIsCreatePostOpen,
     setIsInstallModalOpen,
+    setIsDbConfigModalOpen,
     theme,
     toggleTheme,
     logout
@@ -242,6 +244,13 @@ export const Sidebar: React.FC = () => {
 
           {/* Logout & Theme Toggle */}
           <div className="flex items-center justify-between px-2 pt-1">
+            <button
+              onClick={() => setIsDbConfigModalOpen(true)}
+              className="p-2 text-zinc-400 hover:text-emerald-400 rounded-xl hover:bg-emerald-500/10 transition-colors"
+              title="Supabase Database Settings"
+            >
+              <Database className="w-4 h-4 text-emerald-400" />
+            </button>
             <button
               onClick={toggleTheme}
               className="p-2 text-zinc-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors"

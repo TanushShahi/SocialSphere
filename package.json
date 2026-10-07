@@ -13,6 +13,7 @@
     "electron:dev": "electron ."
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
     "clsx": "^2.1.1",
     "lucide-react": "^1.46.0",
     "react": "^19.2.8",

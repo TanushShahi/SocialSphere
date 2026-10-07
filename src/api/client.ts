@@ -1,3 +1,4 @@
+import { supabaseService } from './supabaseClient';
 import { User, Post, Story, Reel, Conversation, NotificationItem } from '../types';
 import { localStore } from './localStore';
 
@@ -303,24 +304,42 @@ export const api = {
         () => localStore.users.updateProfile(updates)
       ),
 
-    follow: (userId: string) =>
-      executeRemoteOnly(() =>
-        request<{ isFollowing: boolean }>(`/users/${userId}/follow`, {
-          method: 'POST',
-        })
-      ),
+    follow: async (userId: string) => {
+      if (SERVER_URL) {
+        try {
+          return await request<{ isFollowing: boolean }>(`/users/${userId}/follow`, {
+            method: 'POST',
+          });
+        } catch {}
+      }
+      return localStore.users.follow(userId);
+    },
 
-    getFollowers: (userId: string) =>
-      execute(
+    getFollowers: async (userId: string) => {
+      try {
+        const cloudFollowers = await supabaseService.getFollowers(userId);
+        if (cloudFollowers && cloudFollowers.length > 0) {
+          return { users: cloudFollowers };
+        }
+      } catch {}
+      return execute(
         () => request<{ users: User[] }>(`/users/${userId}/followers`),
         () => localStore.users.getFollowers(userId)
-      ),
+      );
+    },
 
-    getFollowing: (userId: string) =>
-      execute(
+    getFollowing: async (userId: string) => {
+      try {
+        const cloudFollowing = await supabaseService.getFollowing(userId);
+        if (cloudFollowing && cloudFollowing.length > 0) {
+          return { users: cloudFollowing };
+        }
+      } catch {}
+      return execute(
         () => request<{ users: User[] }>(`/users/${userId}/following`),
         () => localStore.users.getFollowing(userId)
-      ),
+      );
+    },
 
     block: (userId: string) =>
       execute(
@@ -343,18 +362,35 @@ export const api = {
         () => localStore.users.suggested()
       ),
 
-    search: (query: string) =>
-      executeRemoteOnly(() =>
-        request<{ users: User[] }>(`/users/search?q=${encodeURIComponent(query)}`)
-      ),
+    search: async (query: string) => {
+      try {
+        const users = await supabaseService.searchUsers(query);
+        return { users };
+      } catch (err) {
+        console.warn('[Sphere API] Supabase search fallback:', err);
+        return execute(
+          () => request<{ users: User[] }>(`/users/search?q=${encodeURIComponent(query)}`),
+          () => localStore.users.search(query)
+        );
+      }
+    },
 
-    connectFriend: (idOrUsername: string, options?: { name?: string; avatar?: string }) =>
-      executeRemoteOnly(() =>
-        request<{ user: User }>('/users/connect', {
-          method: 'POST',
-          body: JSON.stringify({ idOrUsername }),
-        })
-      ),
+    connectFriend: async (idOrUsername: string, options?: { name?: string; avatar?: string }) => {
+      try {
+        const profile = await supabaseService.getProfile(idOrUsername);
+        if (profile) {
+          return { user: profile };
+        }
+      } catch {}
+      return execute(
+        () =>
+          request<{ user: User }>('/users/connect', {
+            method: 'POST',
+            body: JSON.stringify({ idOrUsername }),
+          }),
+        () => localStore.users.connectFriend(idOrUsername, options)
+      );
+    },
   },
 
   messages: {

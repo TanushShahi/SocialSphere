@@ -14,6 +14,7 @@ import {
 import { api, getToken, setToken } from '../api/client';
 import { initLocalStore } from '../api/localStore';
 import { onlineHub } from '../api/onlineHub';
+import { supabaseService } from '../api/supabaseClient';
 import { compressImage } from '../utils/imageCompressor';
 import { getSocket, registerSocketUser } from '../services/socket';
 
@@ -49,6 +50,8 @@ interface AppContextType {
   setIsNotificationsOpen: (open: boolean) => void;
   isInstallModalOpen: boolean;
   setIsInstallModalOpen: (open: boolean) => void;
+  isDbConfigModalOpen: boolean;
+  setIsDbConfigModalOpen: (open: boolean) => void;
   toggleLikePost: (postId: string) => Promise<void>;
   toggleSavePost: (postId: string) => Promise<void>;
   addComment: (postId: string, text: string) => Promise<void>;
@@ -169,6 +172,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+  const [isDbConfigModalOpen, setIsDbConfigModalOpen] = useState(false);
   const [shareItem, setShareItem] = useState<ShareItem | null>(null);
   const openShareModal = (item: ShareItem) => setShareItem(item);
   const closeShareModal = () => setShareItem(null);
@@ -1033,6 +1037,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsNotificationsOpen,
         isInstallModalOpen,
         setIsInstallModalOpen,
+        isDbConfigModalOpen,
+        setIsDbConfigModalOpen,
         toggleLikePost,
         toggleSavePost,
         addComment,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Send, Sparkles, Sun, Moon, Search, Download } from 'lucide-react';
+import { Heart, Send, Sparkles, Sun, Moon, Search, Download, Database } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const MobileHeader: React.FC = () => {
@@ -12,6 +12,7 @@ export const MobileHeader: React.FC = () => {
     isSearchOpen,
     setIsSearchOpen,
     setIsInstallModalOpen,
+    setIsDbConfigModalOpen,
     theme,
     toggleTheme
   } = useApp();
@@ -38,6 +39,16 @@ export const MobileHeader: React.FC = () => {
 
       {/* Action buttons matching mockup */}
       <div className="flex items-center gap-1 sm:gap-1.5">
+        {/* Database Settings */}
+        <button
+          onClick={() => setIsDbConfigModalOpen(true)}
+          className="p-1.5 text-emerald-400 hover:text-emerald-300 rounded-xl hover:bg-white/5 transition-colors active:scale-95"
+          aria-label="Database Settings"
+          title="Supabase Cloud Database"
+        >
+          <Database className="w-4 h-4" />
+        </button>
+
         {/* Download App / Install PWA */}
         <button
           onClick={() => setIsInstallModalOpen(true)}

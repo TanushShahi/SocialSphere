@@ -1,3 +1,4 @@
+import { SupabaseConfigModal } from './components/database/SupabaseConfigModal';
 import React from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { AuthPage } from './components/auth/AuthPage';
@@ -32,6 +33,8 @@ const AppContent: React.FC = () => {
     acceptIncomingCall,
     isInstallModalOpen,
     setIsInstallModalOpen,
+    isDbConfigModalOpen,
+    setIsDbConfigModalOpen,
     setIsCreatePostOpen,
     viewingUser,
     closeUserProfile
@@ -74,6 +77,7 @@ const AppContent: React.FC = () => {
       <InstallAppModal isOpen={isInstallModalOpen} onClose={() => setIsInstallModalOpen(false)} />
       <ShareSheetModal />
       <UserProfileModal user={viewingUser} isOpen={Boolean(viewingUser)} onClose={closeUserProfile} />
+      <SupabaseConfigModal isOpen={isDbConfigModalOpen} onClose={() => setIsDbConfigModalOpen(false)} />
     </div>
   );
 };
