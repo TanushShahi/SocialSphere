@@ -208,6 +208,38 @@ export const ExploreView: React.FC = () => {
     }
   };
 
+  const handleAddDirectFriend = async (targetUsername: string, action: 'follow' | 'chat') => {
+    const clean = targetUsername.trim().replace(/^@+/, '').toLowerCase();
+    if (!clean) return;
+
+    const friend: User = {
+      id: `usr_${clean}`,
+      username: clean,
+      name: clean.charAt(0).toUpperCase() + clean.slice(1),
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${clean}`,
+      followersCount: 1,
+      followingCount: 0,
+      postsCount: 0,
+      isPrivate: false,
+      isVerified: false,
+      isFollowing: action === 'follow'
+    };
+
+    if (action === 'follow' && currentUser) {
+      await toggleFollowUser(friend.id);
+    }
+
+    if (action === 'chat') {
+      const convId = await startConversationWithUser(friend);
+      if (convId) {
+        try { sessionStorage.setItem('sphere_active_conv_id', convId); } catch {}
+        setActiveTab('messages');
+      }
+    } else {
+      setUserResults([friend]);
+    }
+  };
+
   const handleAudioCall = (targetUser: User, e: React.MouseEvent) => {
     e.stopPropagation();
     initiateCall({
@@ -442,19 +474,33 @@ export const ExploreView: React.FC = () => {
               </div>
             )}
 
-            {/* Empty state when query produces no matches */}
+                        {/* Direct Connect / Add Friend Card when query has no cloud match */}
             {!userLoading && userResults.length === 0 && (
-              <div className="py-14 px-6 text-center rounded-3xl bg-zinc-900/40 border border-white/5">
-                <div className="w-14 h-14 mx-auto rounded-full bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 mb-3">
-                  <Search className="w-6 h-6" />
+              <div className="py-10 px-6 text-center rounded-3xl bg-zinc-900/60 border border-white/10 shadow-2xl max-w-md mx-auto space-y-4">
+                <div className="w-14 h-14 mx-auto rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                  <UserPlus className="w-7 h-7" />
                 </div>
-                <h3 className="text-base font-bold text-white">No accounts found</h3>
-                <p className="text-xs text-zinc-400 max-w-sm mx-auto mt-1.5">
-                  No registered account matched &ldquo;{cleanQuery}&rdquo;. Make sure your friend has registered their username on SocialSphere.
-                </p>
-                <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] text-zinc-400">
-                  <Sparkles className="w-3 h-3 text-cyan-400" />
-                  Tip: Usernames are case-insensitive.
+                <div>
+                  <h3 className="text-base font-bold text-white">Connect with @{cleanQuery}</h3>
+                  <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">
+                    Not found in the cloud cache yet? You can still follow and message <strong className="text-white">@{cleanQuery}</strong> directly right now!
+                  </p>
+                </div>
+                <div className="flex items-center justify-center gap-3 pt-2">
+                  <button
+                    onClick={() => handleAddDirectFriend(cleanQuery, 'follow')}
+                    className="px-4 py-2.5 rounded-xl bg-gradient-cosmic text-white text-xs font-bold shadow-lg shadow-pink-500/25 hover:opacity-95 transition-all flex items-center gap-2"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    Follow @{cleanQuery}
+                  </button>
+                  <button
+                    onClick={() => handleAddDirectFriend(cleanQuery, 'chat')}
+                    className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-cyan-300 text-xs font-bold border border-white/10 transition-all flex items-center gap-2"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    Message
+                  </button>
                 </div>
               </div>
             )}

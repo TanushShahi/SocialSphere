@@ -147,6 +147,44 @@ export const SearchDrawer: React.FC = () => {
     }
   };
 
+  const handleAddDirectFriend = async (targetUsername: string, action: 'follow' | 'chat') => {
+    const clean = targetUsername.trim().replace(/^@+/, '').toLowerCase();
+    if (!clean) return;
+    
+    // Create friend object
+    const friend: User = {
+      id: `usr_${clean}`,
+      username: clean,
+      name: clean.charAt(0).toUpperCase() + clean.slice(1),
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${clean}`,
+      followersCount: 1,
+      followingCount: 0,
+      postsCount: 0,
+      isPrivate: false,
+      isVerified: false,
+      isFollowing: action === 'follow'
+    };
+
+    saveRecent(clean);
+    
+    // Follow if requested
+    if (action === 'follow' && currentUser) {
+      await toggleFollowUser(friend.id);
+    }
+
+    if (action === 'chat') {
+      setIsSearchOpen(false);
+      const convId = await startConversationWithUser(friend);
+      if (convId) {
+        try { sessionStorage.setItem('sphere_active_conv_id', convId); } catch {}
+        setActiveTab('messages');
+      }
+    } else {
+      // Re-populate results with this newly connected friend
+      setResults([friend]);
+    }
+  };
+
   const handleCall = (user: User, type: 'audio' | 'video', e: React.MouseEvent) => {
     e.stopPropagation();
     setIsSearchOpen(false);
@@ -319,9 +357,33 @@ export const SearchDrawer: React.FC = () => {
                   })}
                 </div>
               ) : !loading && (
-                <div className="py-10 text-center text-zinc-400 space-y-2">
-                  <p className="text-sm font-semibold text-zinc-300">No account found</p>
-                  <p className="text-xs">No registered users matched &ldquo;{query}&rdquo;.</p>
+                <div className="py-7 px-4 text-center rounded-2xl bg-zinc-900/70 border border-white/10 space-y-3.5 shadow-xl">
+                  <div className="w-12 h-12 mx-auto rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                    <UserPlus className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Connect with @{query.trim().replace(/^@+/, '')}</h3>
+                    <p className="text-xs text-zinc-400 mt-1 max-w-xs mx-auto">
+                      Account not indexed yet? You can still follow and message @{query.trim().replace(/^@+/, '')} directly!
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2 pt-1">
+                    <button
+                      onClick={() => handleAddDirectFriend(query, 'follow')}
+                      className="px-3.5 py-2 rounded-xl bg-gradient-cosmic text-white text-xs font-semibold shadow-md shadow-pink-500/20 hover:opacity-95 transition-all flex items-center gap-1.5"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      Follow @{query.trim().replace(/^@+/, '')}
+                    </button>
+                    <button
+                      onClick={() => handleAddDirectFriend(query, 'chat')}
+                      className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-cyan-300 text-xs font-semibold border border-white/10 transition-all flex items-center gap-1.5"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      Message
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
