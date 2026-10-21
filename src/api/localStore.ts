@@ -391,15 +391,17 @@ export const localStore = {
         throw new Error('Not authenticated');
       }
 
-      const follows = getFollows();
+            const follows = getFollows();
+      const myFollowingIds = follows.filter(f => f.followerId === found!.id).map(f => f.followingId);
       const followersCount = follows.filter(f => f.followingId === found!.id).length;
-      const followingCount = follows.filter(f => f.followerId === found!.id).length;
+      const followingCount = myFollowingIds.length;
 
       const { password: _, email: __, ...userClean } = found;
       const finalUser = { 
         ...userClean, 
         followersCount: followersCount || found.followersCount || 0, 
-        followingCount: followingCount || found.followingCount || 0 
+        followingCount: followingCount || found.followingCount || 0,
+        following: myFollowingIds
       } as User;
 
       // Update cached user
@@ -832,6 +834,7 @@ export const localStore = {
         localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updated));
       } catch {}
       cloudRegistry.syncUser(updated).catch(() => {});
+      onlineHub.syncUser(updated).catch(() => {});
       return { user: updated };
     },
 
@@ -1256,10 +1259,18 @@ export const localStore = {
       return { conversations: convs.filter(c => !blocked.has(c.participant.id)) };
     },
 
-    async getOrCreateConversation(recipientId: string): Promise<{ conversation: Conversation }> {
+    async getOrCreateConversation(recipientId: string, fallbackUser?: User): Promise<{ conversation: Conversation }> {
       const { user: me } = await localStore.auth.me();
       const users = getItem<StoredUser[]>(USERS_KEY, []);
       let recipient = users.find(u => u.id === recipientId || (u.username && u.username.toLowerCase() === recipientId.toLowerCase()));
+
+      if (!recipient && fallbackUser) {
+        recipient = fallbackUser as StoredUser;
+        if (!users.some(u => u && u.id === fallbackUser.id)) {
+          users.push(recipient);
+          setItem(USERS_KEY, users);
+        }
+      }
 
       // Auto-connect if recipient is not yet in users
       if (!recipient) {

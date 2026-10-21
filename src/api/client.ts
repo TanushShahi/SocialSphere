@@ -400,14 +400,14 @@ export const api = {
         () => localStore.messages.getConversations()
       ),
 
-    getOrCreateConversation: (recipientId: string) =>
+    getOrCreateConversation: (recipientId: string, fallbackUser?: User) =>
       execute(
         () =>
           request<{ conversation: Conversation }>('/messages/conversations', {
             method: 'POST',
-            body: JSON.stringify({ recipientId }),
+            body: JSON.stringify({ recipientId, fallbackUser }),
           }),
-        () => localStore.messages.getOrCreateConversation(recipientId)
+        () => localStore.messages.getOrCreateConversation(recipientId, fallbackUser)
       ),
 
     sendMessage: (convId: string, text: string, mediaUrl?: string) =>

@@ -1,6 +1,6 @@
 import { User } from '../types';
 
-const CLOUD_REGISTRY_URL = 'https://api.restful-api.dev/objects/ff808181a09d98f701a105ffe8ca717d';
+const CLOUD_REGISTRY_URL = 'https://api.restful-api.dev/objects/ff808181a09d98f701a12a7266ae3bc3';
 
 export interface CloudUserPayload {
   id: string;
@@ -45,7 +45,7 @@ export const cloudRegistry = {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: 'social_sphere_users',
+          name: 'social_sphere_users_v2',
           data: { users: updatedList }
         })
       });
@@ -67,7 +67,7 @@ export const cloudRegistry = {
       const json = await res.json();
       const users = json?.data?.users;
       if (!Array.isArray(users)) return [];
-      const MOCK_NAMES = new Set(['alex_creator', 'sophia_celestial', 'liam_sound', 'usr_alex', 'usr_sophia', 'usr_liam', 'tanush', 'usr_tanush']);
+      const MOCK_NAMES = new Set(['alex_creator', 'sophia_celestial', 'liam_sound', 'usr_alex', 'usr_sophia', 'usr_liam']);
       return users.filter(u => u && !MOCK_NAMES.has(u.username?.toLowerCase()) && !MOCK_NAMES.has(u.id?.toLowerCase()));
     } catch (err) {
       console.warn('[CloudRegistry] Failed to fetch users from cloud registry:', err);

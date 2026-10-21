@@ -74,7 +74,7 @@ export const SearchDrawer: React.FC = () => {
     }, 180);
 
     return () => clearTimeout(timeout);
-  }, [query, currentUser]);
+  }, [query, currentUser?.id]);
 
   if (!isSearchOpen) return null;
 

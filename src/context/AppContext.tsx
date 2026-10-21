@@ -14,6 +14,7 @@ import {
 import { api, getToken, setToken } from '../api/client';
 import { initLocalStore } from '../api/localStore';
 import { onlineHub } from '../api/onlineHub';
+import { cloudRegistry } from '../api/cloudRegistry';
 import { supabaseService } from '../api/supabaseClient';
 import { compressImage } from '../utils/imageCompressor';
 import { getSocket, registerSocketUser } from '../services/socket';
@@ -999,6 +1000,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return null;
   };
+
+  
+  // Automatically sync profile to cloud whenever logged-in user details change
+  useEffect(() => {
+    if (currentUser?.id) {
+      onlineHub.syncUser(currentUser).catch(() => {});
+      cloudRegistry.syncUser(currentUser).catch(() => {});
+    }
+  }, [currentUser?.id, currentUser?.avatar, currentUser?.name, currentUser?.bio, currentUser?.followingCount, currentUser?.followersCount]);
 
   const unreadNotificationsCount = notifications.filter(n => !n.isRead).length;
   const unreadMessagesCount = conversations.reduce((acc, c) => acc + c.unreadCount, 0);

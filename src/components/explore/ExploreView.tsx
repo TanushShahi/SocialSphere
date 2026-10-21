@@ -169,7 +169,7 @@ export const ExploreView: React.FC = () => {
     }, 180);
 
     return () => clearTimeout(timeout);
-  }, [searchQuery, currentUser]);
+  }, [searchQuery, currentUser?.id]);
 
   const handleToggleFollow = async (targetUser: User, e: React.MouseEvent) => {
     e.stopPropagation();

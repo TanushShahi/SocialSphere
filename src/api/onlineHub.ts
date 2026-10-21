@@ -30,16 +30,15 @@ import { User } from '../types';
 
 // Dedicated persistent online endpoints on api.restful-api.dev
 const URLS = {
-  USERS: 'https://api.restful-api.dev/objects/ff808181a09d98f701a105ffe8ca717d',
-  FOLLOWS: 'https://api.restful-api.dev/objects/ff808181a09d98f701a112df4bcf0ceb',
-  MESSAGES: 'https://api.restful-api.dev/objects/ff808181a09d98f701a112df4bab0ce9',
-  CALLS: 'https://api.restful-api.dev/objects/ff808181a09d98f701a112df4bb80cea'
+  USERS: 'https://api.restful-api.dev/objects/ff808181a09d98f701a12a7266ae3bc3',
+  FOLLOWS: 'https://api.restful-api.dev/objects/ff808181a09d98f701a12a7268403bc4',
+  MESSAGES: 'https://api.restful-api.dev/objects/ff808181a09d98f701a12a7269c43bc5',
+  CALLS: 'https://api.restful-api.dev/objects/ff808181a09d98f701a12a726b4f3bc6'
 };
 
 const MOCK_USERNAMES = new Set([
   'alex_creator', 'sophia_celestial', 'liam_sound',
-  'usr_alex', 'usr_sophia', 'usr_liam',
-  'tanush', 'usr_tanush'
+  'usr_alex', 'usr_sophia', 'usr_liam'
 ]);
 
 // Inter-tab synchronization for immediate response across browser tabs

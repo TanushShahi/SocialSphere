@@ -526,7 +526,16 @@ export const MessagesView: React.FC = () => {
                       </div>
                     </div>
 
-                    <span className="text-[11px] font-bold text-pink-400">Chat</span>
+                    <button 
+    type="button"
+    onClick={(e) => {
+      e.stopPropagation();
+      handleStartChatWith(user);
+    }}
+    className="px-3 py-1.5 rounded-xl bg-pink-500/10 hover:bg-pink-500/20 active:scale-95 text-[11px] font-bold text-pink-400 transition-all cursor-pointer"
+  >
+    Chat
+  </button>
                   </div>
                 ))
               ) : userSearchQuery.trim() ? (
